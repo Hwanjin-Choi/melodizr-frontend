@@ -36,7 +36,7 @@ const tokens = createTokens({
     ...defaultTokens.color,
     melodizrOrange: "#F97316",
     melodizrOrangePress: "#E67E00",
-    dark1: "#121212",
+    dark1: "#171719",
     dark2: "#1E1E1E",
     dark3: "#2C2C2C",
     light1: "#FFFFFF",

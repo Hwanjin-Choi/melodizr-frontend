@@ -5,18 +5,39 @@ import { Button, Text, YStack, H3 } from "tamagui";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RecordHeader } from "@/features/record/components/RecordHeader";
-import { TrackList } from "@/features/record/components/TrackList";
+import { TrackList, type Track } from "@/features/record/components/TrackList";
 import { RecordBottomBar } from "@/features/record/components/RecordBottomBarProps";
 import { RecordBottomSheet } from "@/features/record/components/RecordBottomSheet";
 
 export default function RecordPage() {
   const insets = useSafeAreaInsets();
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ["50%"], []);
   const [isProject, setIsProject] = useState(true);
 
-  // [State] Track data (Placeholder is displayed if the array is empty)
-  const [tracks, setTracks] = useState([]); // empty array state
+  /*  const [tracks, setTracks] = useState([]); // empty array state */
+
+  const [tracks, setTracks] = useState<Track[]>([
+    {
+      id: "1",
+      title: "Main Vocals",
+      duration: "03:45",
+    },
+    {
+      id: "2",
+      title: "Acoustic Guitar",
+      duration: "03:42",
+    },
+    {
+      id: "3",
+      title: "Backing Harmony",
+      duration: "03:45",
+    },
+    {
+      id: "4",
+      title: "Piano Intro",
+      duration: "00:30",
+    },
+  ]);
 
   const handleOpenSheet = useCallback(() => {
     bottomSheetRef.current?.expand();

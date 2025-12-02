@@ -16,6 +16,7 @@ import {
   View,
   XStack,
   YStack,
+  Stack,
 } from "tamagui";
 import {
   INSTRUMENT_OPTIONS,
@@ -33,7 +34,7 @@ export const IdleView = ({
   onOpenSheet: () => void;
 }) => (
   <YStack flex={1} ai="center" jc="center" gap="$6" px="$6">
-    <Text color="$textPrimary" fontSize={48} fontWeight="bold">
+    <Text color="white" fontSize="$5" fontWeight="bold">
       00:00
     </Text>
 
@@ -49,17 +50,23 @@ export const IdleView = ({
         circular
         backgroundColor="$accent"
         onPress={onStartRecording}
-        pressStyle={{ scale: 0.95 }}
+        pressStyle={{
+          backgroundColor: "$accentPress",
+          opacity: 1,
+        }}
       >
         <Mic size={40} color="white" />
       </Button>
     </Circle>
 
-    <Text color="$grayText">Tap to start recording</Text>
+    <Text color="$grayText" fontSize="$4" fontWeight="bold">
+      Tap to start recording
+    </Text>
 
     <Button
       variant="outlined"
       borderColor="$dark3"
+      fontWeight="bold"
       color="$grayText"
       icon={<Upload size={16} />}
       borderRadius="$10"
@@ -86,29 +93,48 @@ export const RecordingWaveform = () => (
 export const RecordingView = ({
   onStopRecording,
 }: Pick<RecordControl, "onStopRecording">) => (
-  <YStack flex={1} ai="center" jc="center" gap="$6" px="$6">
-    <RecordingWaveform />
-    <Text color="$textPrimary" fontSize={60} fontWeight="bold">
-      00:05 {/* TODO: Display actual recording time */}
+  <YStack flex={1} ai="center" jc="center" px="$6" gap="$5">
+    <Text color="white" fontSize="$5" fontWeight="bold">
+      00:03
     </Text>
-    <Circle
-      size={100}
-      borderWidth={3}
-      borderColor="$red10"
+
+    <YStack
+      width="100%"
+      bg="$dark1"
+      borderRadius="$6"
+      borderWidth={1}
+      borderColor="$textSecondary"
       ai="center"
       jc="center"
+      py="$8"
     >
-      <Button
-        size="$8"
-        circular
-        backgroundColor="$red10"
+      <RecordingWaveform />
+    </YStack>
+
+    <YStack ai="center" gap="$4">
+      <Circle
         onPress={onStopRecording}
-        pressStyle={{ scale: 0.95 }}
+        size={84}
+        borderWidth={4}
+        borderColor="$melodizrOrange"
+        p={4}
+        pressStyle={{ opacity: 0.8, scale: 0.95 }}
       >
-        <StopCircle size={40} color="white" />
-      </Button>
-    </Circle>
-    <Text color="$grayText">Recording...</Text>
+        <Button
+          circular
+          bg="$melodizrOrange"
+          pressStyle={{ opacity: 0.8, scale: 0.95 }}
+          unstyled
+          ai="center"
+          jc="center"
+        >
+          <Stack width={24} height={24} bg="red" borderRadius={4} />
+        </Button>
+      </Circle>
+      <Text color="$grayText" fontSize="$3">
+        Recording... Tap to stop
+      </Text>
+    </YStack>
   </YStack>
 );
 
@@ -168,15 +194,6 @@ export const ReviewView = ({
     }}
   >
     <YStack gap="$5">
-      <Text
-        color="$textPrimary"
-        fontSize="$6"
-        fontWeight="bold"
-        textAlign="center"
-      >
-        Convert Voice
-      </Text>
-
       <YStack
         bg="$dark1"
         p="$4"
@@ -211,7 +228,7 @@ export const ReviewView = ({
         </XStack>
       </YStack>
 
-      <YStack gap="$2">
+      <YStack gap="$4">
         <Text color="$grayText" fontSize="$3" ml="$1">
           Voice Type
         </Text>
@@ -222,7 +239,7 @@ export const ReviewView = ({
         />
       </YStack>
 
-      <YStack gap="$2">
+      <YStack gap="$4">
         <Text color="$grayText" fontSize="$3" ml="$1">
           Target Instrument
         </Text>
@@ -234,14 +251,14 @@ export const ReviewView = ({
       </YStack>
 
       <Button
-        mt="$4"
+        mt="$3"
         size="$5"
         backgroundColor="$accent"
         onPress={onConvert}
         pressStyle={{ bg: "$accentPress" }}
       >
-        <Text color="white" fontWeight="bold" fontSize="$5">
-          Convert Voice
+        <Text color="white" fontWeight="bold" fontSize="$4">
+          Convert
         </Text>
       </Button>
     </YStack>

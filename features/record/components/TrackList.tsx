@@ -2,7 +2,7 @@ import { Mic, MoreVertical, Music, Play } from "@tamagui/lucide-icons";
 import React from "react";
 import { Button, Circle, ScrollView, Text, XStack, YStack } from "tamagui";
 
-interface Track {
+export interface Track {
   id: string;
   title: string;
   duration: string;

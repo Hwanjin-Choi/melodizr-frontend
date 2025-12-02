@@ -25,15 +25,15 @@ const CustomHandle = () => {
         borderTopRightRadius: 16,
         alignItems: "center",
         borderBottomWidth: 1,
-        borderBottomColor: theme.dark3?.val || "#333333",
+        borderBottomColor: "transparent",
       }}
     >
       <View
         style={{
-          width: 40,
+          width: 60,
           height: 5,
           borderRadius: 4,
-          backgroundColor: theme.grayText?.val || "#888",
+          backgroundColor: theme.melodizrOrange?.val || "#888",
         }}
       />
     </View>
@@ -112,7 +112,7 @@ export const RecordBottomSheet = forwardRef<BottomSheet, any>((_, ref) => {
       handleComponent={CustomHandle}
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: theme.dark2?.val || "#1E1E1E" }}
-      onDismiss={onCloseSheet}
+      onClose={onCloseSheet}
     >
       <YStack flex={1} paddingBottom={insets.bottom + 20}>
         {CurrentView}
