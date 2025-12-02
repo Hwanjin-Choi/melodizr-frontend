@@ -77,7 +77,6 @@ export const TrackList = ({ tracks, onStartRecording }: TrackListProps) => {
   }
 
   return (
-    // ZStack을 써서 리스트 위에 바텀시트를 띄울 준비
     <ZStack flex={1}>
       <ScrollView flex={1} p="$4" mb={80} showsVerticalScrollIndicator={false}>
         <YStack gap="$3" pb={100}>
@@ -88,14 +87,12 @@ export const TrackList = ({ tracks, onStartRecording }: TrackListProps) => {
             <TrackItem
               key={track.id}
               track={track}
-              // [핵심] 케밥 누르면 해당 트랙을 선택 상태로 만듦 -> 바텀시트 오픈
               onOpenMenu={() => setSelectedTrack(track)}
             />
           ))}
         </YStack>
       </ScrollView>
 
-      {/* [모던 UI] 커스텀 바텀 액션 시트 */}
       {selectedTrack && (
         <CustomActionSheet
           track={selectedTrack}
@@ -163,14 +160,13 @@ const TrackItem = ({
 
           <WaveformVisualizer color={isPlaying ? "$accent" : "$grayText"} />
 
-          {/* 케밥 메뉴 버튼 */}
           <Button
             size="$3"
             circular
             chromeless
             onPress={(e) => {
               e.stopPropagation();
-              onOpenMenu(); // 부모에게 "나 열어줘!" 신호 보냄
+              onOpenMenu();
             }}
           >
             <MoreVertical size={20} color="$grayText" />
@@ -178,7 +174,6 @@ const TrackItem = ({
         </XStack>
       </YStack>
 
-      {/* 뮤트 오버레이 */}
       {isMuted && (
         <YStack
           fullscreen
@@ -206,7 +201,6 @@ const TrackItem = ({
   );
 };
 
-// --- [웨이브폼 (기존 유지)] ---
 const WaveformVisualizer = ({ color }: { color: string }) => {
   const bars = useMemo(
     () =>
@@ -237,7 +231,6 @@ const CustomActionSheet = ({
 }) => {
   return (
     <ZStack fullscreen>
-      {/* 1. 뒷배경 (Dimming) */}
       <YStack
         fullscreen
         bg="rgba(0,0,0,0.6)"
@@ -245,8 +238,6 @@ const CustomActionSheet = ({
         animation="quick"
         enterStyle={{ opacity: 0 }}
       />
-
-      {/* 2. 시트 본체 */}
       <YStack
         position="absolute"
         bottom={0}
@@ -257,8 +248,6 @@ const CustomActionSheet = ({
         borderTopRightRadius="$6"
         p="$4"
         gap="$2"
-        // [핵심 수정] 하단 여백을 대폭 늘렸습니다 (50 -> 130)
-        // 마이크 버튼이 보통 80~100 정도 공간을 차지하므로, 130 정도 주면 안전합니다.
         pb={130}
         animation="bouncy"
         enterStyle={{ y: 300, opacity: 0 }}
@@ -301,12 +290,11 @@ const CustomActionSheet = ({
     </ZStack>
   );
 };
-// 액션 버튼 스타일 (iOS 스타일)
 const ActionButton = ({ icon: Icon, label, isDestructive, onPress }: any) => (
   <Button
-    size="$6" // 버튼 크기를 키움
+    size="$6"
     bg="$dark1"
-    jc="flex-start" // 왼쪽 정렬
+    jc="flex-start"
     borderRadius="$4"
     onPress={onPress}
     pressStyle={{ bg: "$dark3" }}
