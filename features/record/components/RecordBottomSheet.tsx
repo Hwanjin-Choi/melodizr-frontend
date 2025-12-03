@@ -14,6 +14,10 @@ import {
   ReviewView,
 } from "./RecordModalViews";
 
+interface RecordBottomSheetProps {
+  onRecordingComplete?: (uri: string, duration: number) => void;
+}
+
 const CustomHandle = () => {
   const theme = useTheme();
   return (
@@ -40,11 +44,16 @@ const CustomHandle = () => {
   );
 };
 
-export const RecordBottomSheet = forwardRef<BottomSheet, any>((_, ref) => {
+export const RecordBottomSheet = forwardRef<
+  BottomSheet,
+  RecordBottomSheetProps
+>((props, ref) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
-  const control = useRecordControl(ref);
+  const control = useRecordControl(ref as React.RefObject<BottomSheet>, {
+    onRecordingComplete: props.onRecordingComplete,
+  });
 
   const {
     step,
@@ -59,6 +68,7 @@ export const RecordBottomSheet = forwardRef<BottomSheet, any>((_, ref) => {
     instrument,
     isPlaying,
     onCloseSheet,
+    durationMillis,
   } = control;
 
   const renderBackdrop = useCallback(
@@ -76,7 +86,12 @@ export const RecordBottomSheet = forwardRef<BottomSheet, any>((_, ref) => {
   const CurrentView = useMemo(() => {
     switch (step) {
       case "recording":
-        return <RecordingView onStopRecording={onStopRecording} />;
+        return (
+          <RecordingView
+            onStopRecording={onStopRecording}
+            durationMillis={durationMillis}
+          />
+        );
       case "review":
         return (
           <ReviewView
@@ -100,7 +115,7 @@ export const RecordBottomSheet = forwardRef<BottomSheet, any>((_, ref) => {
           />
         );
     }
-  }, [step, control]);
+  }, [step, control, durationMillis]);
 
   return (
     <BottomSheet

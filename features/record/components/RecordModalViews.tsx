@@ -82,6 +82,15 @@ export const IdleView = ({
 // ------------------------------------
 // Step 2: Recording View
 // ------------------------------------
+const formatDuration = (millis: number) => {
+  const totalSeconds = Math.floor(millis / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
+};
+
 export const RecordingWaveform = () => (
   <XStack gap="$1" height={60} ai="center" jc="center">
     {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((i, index) => (
@@ -89,13 +98,13 @@ export const RecordingWaveform = () => (
     ))}
   </XStack>
 );
-
 export const RecordingView = ({
   onStopRecording,
-}: Pick<RecordControl, "onStopRecording">) => (
+  durationMillis = 0, // props로 시간 받음
+}: Pick<RecordControl, "onStopRecording"> & { durationMillis?: number }) => (
   <YStack flex={1} ai="center" jc="center" px="$6" gap="$5">
     <Text color="white" fontSize="$5" fontWeight="bold">
-      00:03
+      {formatDuration(durationMillis)}
     </Text>
 
     <YStack
@@ -123,10 +132,10 @@ export const RecordingView = ({
         <Button
           circular
           bg="$melodizrOrange"
-          pressStyle={{ opacity: 0.8, scale: 0.95 }}
           unstyled
           ai="center"
           jc="center"
+          pointerEvents="none"
         >
           <Stack width={24} height={24} bg="red" borderRadius={4} />
         </Button>
