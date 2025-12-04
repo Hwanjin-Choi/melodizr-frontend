@@ -70,16 +70,17 @@ export const useRecordControl = (
   }, []);
 
   // --- [녹음 종료] ---
-  const onStopRecording = useCallback(async () => {
+  /*   const onStopRecording = useCallback(async () => {
     if (!recording) return;
 
     try {
       recording.setOnRecordingStatusUpdate(null);
 
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
       const status = await recording.getStatusAsync();
       const finalDuration = status.isLoaded ? status.durationMillis : 0;
+
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
 
       setRecording(null);
       setDurationMillis(0);
@@ -92,7 +93,42 @@ export const useRecordControl = (
     } catch (err) {
       console.error("Failed to stop recording", err);
     }
-  }, [recording, onRecordingComplete]);
+  }, [recording, onRecordingComplete]); */
+
+  const onStopRecording = useCallback(async () => {
+    if (!recording) return;
+
+    try {
+      // 1. 상태 업데이트 중지
+      recording.setOnRecordingStatusUpdate(null);
+
+      // 2. 현재 상태 가져오기
+      const status = await recording.getStatusAsync();
+      console.log(status);
+
+      const finalDuration =
+        status.isLoaded && status.durationMillis > 0
+          ? status.durationMillis
+          : durationMillis;
+
+      // 3. 녹음 종료 및 언로드
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+
+      setRecording(null);
+      setDurationMillis(0);
+
+      // 4. 저장 로직 실행 (0이 아닌 올바른 시간이 넘어갑니다)
+      if (uri && onRecordingComplete) {
+        onRecordingComplete(uri, finalDuration);
+      }
+
+      setStep("idle");
+    } catch (err) {
+      console.error("Failed to stop recording", err);
+    }
+    // [중요] 배열 끝에 durationMillis를 반드시 추가해야 최신 시간을 가져올 수 있사옵니다.
+  }, [recording, onRecordingComplete, durationMillis]);
 
   const onCloseSheet = useCallback(() => {
     setStep("idle");

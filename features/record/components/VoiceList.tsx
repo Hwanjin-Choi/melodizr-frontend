@@ -169,12 +169,12 @@ const VoiceCard = ({
             Voice {index + 1} - {typeLabel}
           </Text>
         </XStack>
-        {/* <Text color="$grayText" fontSize="$3" fontFamily="$body">
-          {formattedDuration}
-        </Text> */}
         <Text color="$grayText" fontSize="$3" fontFamily="$body">
-          {voice.duration}
+          {formattedDuration}
         </Text>
+        {/* <Text color="$grayText" fontSize="$3" fontFamily="$body">
+          {voice.duration}
+        </Text> */}
       </XStack>
 
       <XStack ai="center" gap="$3" height={40}>
