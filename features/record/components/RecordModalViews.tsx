@@ -30,8 +30,10 @@ import {
 export const IdleView = ({
   onOpenSheet,
   onStartRecording,
+  onUploadFile,
 }: Pick<RecordControl, "onStartRecording"> & {
   onOpenSheet: () => void;
+  onUploadFIle: () => void;
 }) => (
   <YStack flex={1} ai="center" jc="center" gap="$6" px="$6">
     <Text color="white" fontSize="$5" fontWeight="bold">
@@ -71,8 +73,7 @@ export const IdleView = ({
       icon={<Upload size={16} />}
       borderRadius="$10"
       mt="$2"
-      // TODO: File upload logic
-      onPress={() => console.log("Upload file clicked")}
+      onPress={onUploadFile}
     >
       Or upload audio file
     </Button>
@@ -184,6 +185,7 @@ export const ReviewView = ({
   instrument,
   isPlaying,
   setIsPlaying,
+  duration = 0,
 }: Pick<
   RecordControl,
   | "onConvert"
@@ -213,7 +215,7 @@ export const ReviewView = ({
       >
         <XStack ai="center" jc="space-between">
           <Text color="$grayText" fontSize="$3">
-            00:05 {/* TODO: Actual recorded length */}
+            {formatDuration(duration)}
           </Text>
           <XStack gap="$1" ai="center" height={40}>
             {/* Temporary waveform visualization */}
@@ -267,7 +269,7 @@ export const ReviewView = ({
         pressStyle={{ bg: "$accentPress" }}
       >
         <Text color="white" fontWeight="bold" fontSize="$4">
-          Convert
+          Convert & Save
         </Text>
       </Button>
     </YStack>

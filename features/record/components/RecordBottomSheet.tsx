@@ -15,7 +15,7 @@ import {
 } from "./RecordModalViews";
 
 interface RecordBottomSheetProps {
-  onRecordingComplete?: (uri: string, duration: number) => void;
+  onConversionComplete?: (voice: any, track: any) => void;
 }
 
 const CustomHandle = () => {
@@ -52,9 +52,8 @@ export const RecordBottomSheet = forwardRef<
   const insets = useSafeAreaInsets();
 
   const control = useRecordControl(ref as React.RefObject<BottomSheet>, {
-    onRecordingComplete: props.onRecordingComplete,
+    onConversionComplete: props.onConversionComplete,
   });
-
   const {
     step,
     snapPoints,
@@ -69,6 +68,8 @@ export const RecordBottomSheet = forwardRef<
     isPlaying,
     onCloseSheet,
     durationMillis,
+    tempDuration,
+    onUploadFile,
   } = control;
 
   const renderBackdrop = useCallback(
@@ -102,6 +103,7 @@ export const RecordBottomSheet = forwardRef<
             instrument={instrument}
             isPlaying={isPlaying}
             setIsPlaying={setIsPlaying}
+            duration={tempDuration}
           />
         );
       case "converting":
@@ -112,10 +114,19 @@ export const RecordBottomSheet = forwardRef<
           <IdleView
             onStartRecording={onStartRecording}
             onOpenSheet={() => {}}
+            onUploadFile={onUploadFile}
           />
         );
     }
-  }, [step, control, durationMillis]);
+  }, [
+    step,
+    control,
+    durationMillis,
+    tempDuration,
+    isPlaying,
+    voiceType,
+    instrument,
+  ]);
 
   return (
     <BottomSheet
@@ -123,7 +134,7 @@ export const RecordBottomSheet = forwardRef<
       index={-1}
       snapPoints={snapPoints}
       enableDynamicSizing={false}
-      enablePanDownToClose={step !== "recording" && step !== "converting"}
+      enablePanDownToClose={step === "idle"}
       handleComponent={CustomHandle}
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: theme.dark2?.val || "#1E1E1E" }}

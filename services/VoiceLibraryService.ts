@@ -11,23 +11,40 @@ export interface VoiceItem {
   duration: number;
   createdAt: number;
   type: "humming" | "beatbox";
+  sourceType: "recording" | "file";
 }
 
 export const VoiceLibraryService = {
   saveVoice: async (
     tempUri: string,
     duration: number,
-    type: "humming" | "beatbox" = "humming"
+    type: "humming" | "beatbox" = "humming",
+    sourceType: "recording" | "file" = "recording",
+    customTitle?: string
   ): Promise<VoiceItem> => {
     try {
       const id = Date.now().toString();
       const fileName = `voice_${id}.wav`;
       const newPath = `${FileSystem.documentDirectory}${fileName}`;
 
-      await FileSystem.moveAsync({
+      /*  await FileSystem.moveAsync({
+        from: tempUri,
+        to: newPath,
+      }); */
+      await FileSystem.copyAsync({
         from: tempUri,
         to: newPath,
       });
+      let title = customTitle;
+      if (!title) {
+        title =
+          sourceType === "recording"
+            ? `Recording ${new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`
+            : `File ${new Date().toLocaleDateString()}`;
+      }
 
       const newVoice: VoiceItem = {
         id,
@@ -39,6 +56,7 @@ export const VoiceLibraryService = {
         duration,
         createdAt: Date.now(),
         type,
+        sourceType,
       };
 
       const currentList = await VoiceLibraryService.getVoices();

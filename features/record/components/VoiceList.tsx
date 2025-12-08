@@ -153,7 +153,8 @@ const VoiceCard = ({
   }, [voice.duration]);
 
   const typeLabel = voice.type.charAt(0).toUpperCase() + voice.type.slice(1);
-
+  const sourceLabel = voice.sourceType === "file" ? "File" : "Recording";
+  const sourceBadgeColor = voice.sourceType === "file" ? "$blue9" : "$accent";
   return (
     <YStack
       bg="$dark2"
@@ -164,9 +165,24 @@ const VoiceCard = ({
       borderColor="$dark3"
     >
       <XStack jc="space-between" ai="center">
-        <XStack ai="center" gap="$2">
-          <Text color="white" fontWeight="bold" fontSize="$4">
-            Voice {index + 1} - {typeLabel}
+        <XStack ai="center" gap="$2" flex={1} mr="$2">
+          {/* [추가] 배지 UI */}
+          <Stack bg={sourceBadgeColor} px="$2" py="$1" borderRadius="$2">
+            <Text color="white" fontSize={10} fontWeight="bold">
+              {sourceLabel}
+            </Text>
+          </Stack>
+
+          {/* 제목 표시 (너무 길면 잘리게 처리) */}
+          <Text
+            color="white"
+            fontWeight="bold"
+            fontSize="$4"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            flex={1}
+          >
+            {voice.title}
           </Text>
         </XStack>
         <Text color="$grayText" fontSize="$3" fontFamily="$body">

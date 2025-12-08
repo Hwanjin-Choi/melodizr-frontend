@@ -9,7 +9,8 @@ import {
   VolumeX,
   X,
 } from "@tamagui/lucide-icons";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Audio } from "expo-av";
 import {
   Button,
   Circle,
@@ -25,6 +26,7 @@ export interface Track {
   id: string;
   title: string;
   duration: string;
+  uri?: string; // 오디오 파일 경로
 }
 
 interface TrackListProps {
@@ -34,6 +36,52 @@ interface TrackListProps {
 
 export const TrackList = ({ tracks, onStartRecording }: TrackListProps) => {
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
+
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (sound) sound.unloadAsync();
+    };
+  }, [sound]);
+
+  const handlePlay = async (track: Track) => {
+    if (!track.uri) return;
+
+    try {
+      // 이미 재생 중인 것이 있으면 멈춤
+      if (sound) {
+        await sound.unloadAsync();
+        setSound(null);
+      }
+
+      // 같은 트랙을 다시 눌렀다면 정지(토글)
+      if (playingId === track.id) {
+        setPlayingId(null);
+        return;
+      }
+
+      // 새 트랙 재생
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: track.uri },
+        { shouldPlay: true }
+      );
+
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingId(null);
+          newSound.unloadAsync();
+          setSound(null);
+        }
+      });
+
+      setSound(newSound);
+      setPlayingId(track.id);
+    } catch (error) {
+      console.error("Track playback failed", error);
+    }
+  };
 
   if (tracks.length === 0) {
     return (
@@ -88,6 +136,8 @@ export const TrackList = ({ tracks, onStartRecording }: TrackListProps) => {
               key={track.id}
               track={track}
               onOpenMenu={() => setSelectedTrack(track)}
+              isPlaying={playingId === track.id}
+              onPlay={() => handlePlay(track)}
             />
           ))}
         </YStack>
@@ -107,16 +157,18 @@ export const TrackList = ({ tracks, onStartRecording }: TrackListProps) => {
 const TrackItem = ({
   track,
   onOpenMenu,
+  isPlaying, // [추가]
+  onPlay,
 }: {
   track: Track;
   onOpenMenu: () => void;
+  isPlaying: boolean;
+  onPlay: () => void;
 }) => {
   const [isMuted, setIsMuted] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   const toggleMute = () => {
     setIsMuted(!isMuted);
-    if (!isMuted) setIsPlaying(false);
   };
 
   return (
@@ -137,7 +189,7 @@ const TrackItem = ({
           <Text color="$textPrimary" fontWeight="bold" fontSize="$4">
             {track.title}
           </Text>
-          <Text color="$grayText" fontSize="$2">
+          <Text color="$grayText" fontSize="$3">
             {track.duration}
           </Text>
         </XStack>
@@ -148,7 +200,7 @@ const TrackItem = ({
             bg={isPlaying ? "$accent" : "$grayText"}
             onPress={(e) => {
               e.stopPropagation();
-              if (!isMuted) setIsPlaying(!isPlaying);
+              if (!isMuted) onPlay();
             }}
           >
             {isPlaying ? (
