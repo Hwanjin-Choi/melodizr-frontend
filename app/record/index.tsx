@@ -77,6 +77,16 @@ export default function RecordPage() {
     setIsProjectTab(false);
   };
 
+  const handleToggleMute = (trackId: string) => {
+    setTracks((prevTracks) =>
+      prevTracks.map((track) =>
+        track.id === trackId ? { ...track, isMuted: !track.isMuted } : track
+      )
+    );
+  };
+
+  const activeTracks = tracks.filter((t) => !t.isMuted);
+
   return (
     <YStack flex={1} bg="$background" paddingTop={insets.top}>
       <RecordHeader isProject={isProjectTab} onTabChange={setIsProjectTab} />
@@ -85,7 +95,7 @@ export default function RecordPage() {
         <YStack flex={1}>
           {tracks.length > 0 && (
             <YStack px="$4" pb="$4">
-              <ProjectPlayer layers={tracks} />
+              <ProjectPlayer layers={activeTracks} />
             </YStack>
           )}
 
@@ -94,6 +104,7 @@ export default function RecordPage() {
             tracks={tracks}
             onStartRecording={handleOpenSheet}
             onDeleteTrack={handleDeleteTrack}
+            onToggleMute={handleToggleMute}
           />
         </YStack>
       ) : (

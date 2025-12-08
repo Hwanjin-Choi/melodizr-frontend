@@ -8,6 +8,7 @@ import {
   Share,
   VolumeX,
   X,
+  Volume2,
 } from "@tamagui/lucide-icons";
 import React, { useState, useMemo, useEffect } from "react";
 import { Audio } from "expo-av";
@@ -21,24 +22,28 @@ import {
   ZStack,
   Spacer,
 } from "tamagui";
+import { getSmartUri } from "@/utils/pathUtils";
 
 export interface Track {
   id: string;
   title: string;
   duration: string;
-  uri?: string; // 오디오 파일 경로
+  uri?: string;
+  isMuted?: boolean;
 }
 
 interface TrackListProps {
   tracks: Track[];
   onStartRecording: () => void;
   onDeleteTrack: (track: Track) => void;
+  onToggleMute?: (trackId: string) => void;
 }
 
 export const TrackList = ({
   tracks,
   onStartRecording,
   onDeleteTrack,
+  onToggleMute,
 }: TrackListProps) => {
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
 
@@ -52,24 +57,22 @@ export const TrackList = ({
   }, [sound]);
 
   const handlePlay = async (track: Track) => {
-    if (!track.uri) return;
+    const playableUri = getSmartUri(track.uri);
+    if (!playableUri) return;
 
     try {
-      // 이미 재생 중인 것이 있으면 멈춤
       if (sound) {
         await sound.unloadAsync();
         setSound(null);
       }
 
-      // 같은 트랙을 다시 눌렀다면 정지(토글)
       if (playingId === track.id) {
         setPlayingId(null);
         return;
       }
 
-      // 새 트랙 재생
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: track.uri },
+        { uri: playableUri },
         { shouldPlay: true }
       );
 
@@ -143,6 +146,7 @@ export const TrackList = ({
               onOpenMenu={() => setSelectedTrack(track)}
               isPlaying={playingId === track.id}
               onPlay={() => handlePlay(track)}
+              onToggleMute={() => onToggleMute?.(track.id)}
             />
           ))}
         </YStack>
@@ -153,7 +157,6 @@ export const TrackList = ({
           track={selectedTrack}
           onClose={() => setSelectedTrack(null)}
           onDelete={() => {
-            // [수정] 삭제 버튼 클릭 시
             onDeleteTrack(selectedTrack);
             setSelectedTrack(null);
           }}
@@ -167,25 +170,23 @@ export const TrackList = ({
 const TrackItem = ({
   track,
   onOpenMenu,
-  isPlaying, // [추가]
+  isPlaying,
   onPlay,
+  onToggleMute,
 }: {
   track: Track;
   onOpenMenu: () => void;
   isPlaying: boolean;
   onPlay: () => void;
+  onToggleMute: () => void;
 }) => {
-  const [isMuted, setIsMuted] = useState(false);
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
+  const isMuted = track.isMuted ?? false;
 
   return (
     <ZStack
       height={90}
       borderRadius="$4"
-      onPress={toggleMute}
+      onPress={onToggleMute}
       overflow="hidden"
     >
       <YStack
@@ -196,7 +197,12 @@ const TrackItem = ({
         opacity={isMuted ? 0.3 : 1}
       >
         <XStack jc="space-between" ai="center">
-          <Text color="$textPrimary" fontWeight="bold" fontSize="$4">
+          <Text
+            color="white"
+            fontWeight="bold"
+            fontSize="$4"
+            textDecorationLine={isMuted ? "line-through" : "none"}
+          >
             {track.title}
           </Text>
           <Text color="$grayText" fontSize="$3">
@@ -221,6 +227,12 @@ const TrackItem = ({
           </Circle>
 
           <WaveformVisualizer color={isPlaying ? "$accent" : "$grayText"} />
+
+          {isMuted ? (
+            <VolumeX size={20} color="$grayText" />
+          ) : (
+            <Volume2 size={20} color="$grayText" />
+          )}
 
           <Button
             size="$3"
@@ -284,6 +296,7 @@ const WaveformVisualizer = ({ color }: { color: string }) => {
     </XStack>
   );
 };
+
 const CustomActionSheet = ({
   track,
   onClose,
@@ -353,6 +366,7 @@ const CustomActionSheet = ({
     </ZStack>
   );
 };
+
 const ActionButton = ({ icon: Icon, label, isDestructive, onPress }: any) => (
   <Button
     size="$6"

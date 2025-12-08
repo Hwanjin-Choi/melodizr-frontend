@@ -25,7 +25,7 @@ export function GlobalRecordButton() {
       shadowOffset={{ width: 0, height: 4 }}
       shadowOpacity={0.3}
       shadowRadius={4}
-      pressStyle={{ scale: 0.95, backgroundColor: "$accentPress" }}
+      pressStyle={{ backgroundColor: "$accentPress" }}
       onPress={() => router.push("/record")}
       icon={<Mic size={28} color="white" />}
     />

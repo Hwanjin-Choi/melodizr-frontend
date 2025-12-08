@@ -4,6 +4,7 @@ import { View, Text, YStack, XStack, Button, Slider, Circle } from "tamagui";
 import { Play, Pause, SkipBack, SkipForward } from "@tamagui/lucide-icons";
 import { parseDurationToMillis, formatMillisToTime } from "@/utils/formatUtils";
 import { type Track } from "@/features/record/components/TrackList";
+import { getSmartUri } from "@/utils/pathUtils";
 
 /* interface Track {
   id: string;
@@ -45,10 +46,11 @@ export const ProjectPlayer = ({ layers }: ProjectPlayerProps) => {
 
         await Promise.all(
           layers.map(async (layer) => {
-            if (!layer.uri) return;
+            const playableUri = getSmartUri(layer.uri);
+            if (!playableUri) return;
 
             const { sound } = await Audio.Sound.createAsync(
-              { uri: layer.uri },
+              { uri: playableUri },
               { shouldPlay: false, positionMillis: 0 }
             );
             loadedSounds.push(sound);

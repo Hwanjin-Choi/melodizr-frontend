@@ -34,7 +34,7 @@ export const RecordBottomBar = ({
         size="$6"
         circular
         backgroundColor="$accent"
-        pressStyle={{ scale: 0.95, backgroundColor: "$accentPress" }}
+        pressStyle={{ backgroundColor: "$accentPress" }}
         onPress={onOpenSheet}
         elevation="$4"
       >

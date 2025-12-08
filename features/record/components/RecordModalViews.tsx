@@ -346,10 +346,13 @@ export const ConvertingView = () => (
   <YStack flex={1} ai="center" jc="center" gap="$6">
     <Spinner size="large" color="$accent" />
     <YStack ai="center" gap="$2">
-      <Text color="$textPrimary" fontSize="$6" fontWeight="bold">
+      <Text color="white" fontSize="$6" fontWeight="bold">
         Converting...
       </Text>
-      <Text color="$grayText">Creating your instrument track</Text>
+      <Text color="$grayText" textAlign="center">
+        Creating your instrument track.{"\n"}
+        You can safely close this screen.
+      </Text>
     </YStack>
   </YStack>
 );
