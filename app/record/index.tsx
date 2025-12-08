@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { StyleSheet } from "react-native";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { Button, Text, YStack, H3 } from "tamagui";
+import { Button, Text, YStack, H3, ScrollView } from "tamagui";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RecordHeader } from "@/features/record/components/RecordHeader";
@@ -21,12 +21,15 @@ import { VoiceList } from "@/features/record/components/VoiceList";
 import { VoiceLibraryService, VoiceItem } from "@/services/VoiceLibraryService";
 import { TrackLibraryService } from "@/services/TrackLibraryService";
 
+import { ProjectPlayer } from "@/features/record/components/ProjectPlayer";
+
 export default function RecordPage() {
   const insets = useSafeAreaInsets();
   const bottomSheetRef = useRef<RecordBottomSheetHandle>(null);
   const [isProjectTab, setIsProjectTab] = useState(true);
   const [voiceLibrary, setVoiceLibrary] = useState<VoiceItem[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
+
   const loadVoices = async () => {
     const voices = await VoiceLibraryService.getVoices();
     setVoiceLibrary(voices);
@@ -41,6 +44,7 @@ export default function RecordPage() {
     loadVoices();
     loadTracks();
   }, []);
+
   const handleConversionComplete = async (
     newVoice: VoiceItem,
     newTrack: Track
@@ -52,37 +56,13 @@ export default function RecordPage() {
     bottomSheetRef.current?.close();
   };
 
-  /* const [tracks, setTracks] = useState<Track[]>([
-    {
-      id: "1",
-      title: "Main Vocals",
-      duration: "03:45",
-    },
-    {
-      id: "2",
-      title: "Acoustic Guitar",
-      duration: "03:42",
-    },
-    {
-      id: "3",
-      title: "Backing Harmony",
-      duration: "03:45",
-    },
-    {
-      id: "4",
-      title: "Piano Intro",
-      duration: "00:30",
-    },
-  ]);
- */
-
   const handleOpenSheet = useCallback(() => {
     bottomSheetRef.current?.expand();
   }, []);
 
   const handleDeleteTrack = async (track: Track) => {
     await TrackLibraryService.deleteTrack(track.id);
-    await loadTracks(); // 목록 갱신
+    await loadTracks();
   };
 
   const handleConvertFromVoice = (voice: VoiceItem) => {
@@ -91,27 +71,31 @@ export default function RecordPage() {
 
   const onRecordingFinished = async (uri: string, duration: number) => {
     console.log("Saving recording:", uri);
-
-    // 1. 서비스 통해 파일 저장
     await VoiceLibraryService.saveVoice(uri, duration, "humming");
-
-    // 2. 목록 갱신
     await loadVoices();
-
-    // 3. 시트 닫기 및 탭 전환
     bottomSheetRef.current?.close();
     setIsProjectTab(false);
   };
+
   return (
     <YStack flex={1} bg="$background" paddingTop={insets.top}>
       <RecordHeader isProject={isProjectTab} onTabChange={setIsProjectTab} />
 
       {isProjectTab ? (
-        <TrackList
-          tracks={tracks}
-          onStartRecording={handleOpenSheet}
-          onDeleteTrack={handleDeleteTrack}
-        />
+        <YStack flex={1}>
+          {tracks.length > 0 && (
+            <YStack px="$4" pb="$4">
+              <ProjectPlayer layers={tracks} />
+            </YStack>
+          )}
+
+          {/* 기존 트랙 리스트 */}
+          <TrackList
+            tracks={tracks}
+            onStartRecording={handleOpenSheet}
+            onDeleteTrack={handleDeleteTrack}
+          />
+        </YStack>
       ) : (
         <VoiceList
           voices={voiceLibrary}
@@ -120,10 +104,7 @@ export default function RecordPage() {
         />
       )}
 
-      <RecordBottomBar
-        visible={tracks.length > 0}
-        onOpenSheet={handleOpenSheet}
-      />
+      <RecordBottomBar visible={true} onOpenSheet={handleOpenSheet} />
 
       <RecordBottomSheet
         ref={bottomSheetRef}
