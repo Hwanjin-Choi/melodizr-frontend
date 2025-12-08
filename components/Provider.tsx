@@ -4,13 +4,14 @@ import config from "../tamagui.config";
 import { PortalProvider } from "@tamagui/portal";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 
-export function Provider({ children, ...rest }) {
+export function Provider({ children, ...rest }: { children: React.ReactNode }) {
   const colorScheme = useColorScheme();
 
   return (
     <TamaguiProvider
       config={config}
       defaultTheme={colorScheme === "dark" ? "dark" : "light"}
+      {...rest}
     >
       <BottomSheetModalProvider>
         <PortalProvider>

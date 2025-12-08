@@ -25,7 +25,6 @@ export interface RecordBottomSheetHandle {
   expand: () => void;
   close: () => void;
   openForConversion: (voice: VoiceItem) => void;
-  onConversionComplete?: (voice: any, track: any) => void;
 }
 
 interface RecordBottomSheetProps {
@@ -59,8 +58,8 @@ const CustomHandle = () => {
 };
 
 export const RecordBottomSheet = forwardRef<
-  RecordBottomSheetProps,
-  RecordBottomSheetHandle
+  RecordBottomSheetHandle,
+  RecordBottomSheetProps
 >((props, ref) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -93,7 +92,7 @@ export const RecordBottomSheet = forwardRef<
     expand: () => bottomSheetRef.current?.expand(),
     close: () => bottomSheetRef.current?.close(),
     openForConversion: (voice: VoiceItem) => {
-      startFromExistingVoice(voice); // 훅의 함수 호출
+      startFromExistingVoice(voice);
     },
   }));
 

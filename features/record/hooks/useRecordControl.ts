@@ -126,9 +126,7 @@ export const useRecordControl = (
       recording.setOnRecordingStatusUpdate(null);
       const status = await recording.getStatusAsync();
       const finalDuration =
-        status.isLoaded && status.durationMillis > 0
-          ? status.durationMillis
-          : durationMillis;
+        status.durationMillis > 0 ? status.durationMillis : durationMillis;
 
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
@@ -175,7 +173,7 @@ export const useRecordControl = (
       await sound.unloadAsync();
 
       setTempUri(asset.uri);
-      setTempDuration(duration);
+      setTempDuration(duration ?? 0);
       setSourceType("file");
       setOriginalFileName(asset.name);
       await prepareForPlayback();
