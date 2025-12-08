@@ -17,6 +17,7 @@
     "@tamagui/core": "^1.121.0",
     "@tamagui/font-inter": "^1.121.0",
     "@tamagui/lucide-icons": "^1.138.6",
+    "@tamagui/portal": "^1.139.2",
     "expo": "~52.0.0",
     "expo-av": "~15.0.2",
     "expo-constants": "~17.0.3",

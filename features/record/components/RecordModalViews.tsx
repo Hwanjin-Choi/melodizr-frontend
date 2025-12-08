@@ -1,5 +1,12 @@
-import { Mic, Pause, Play, StopCircle, Upload } from "@tamagui/lucide-icons";
-import React, { useEffect } from "react";
+import {
+  Mic,
+  Pause,
+  Play,
+  Upload,
+  RefreshCcw,
+  Trash2,
+} from "@tamagui/lucide-icons";
+import React, { useEffect, useState } from "react";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -18,11 +25,9 @@ import {
   YStack,
   Stack,
 } from "tamagui";
-import {
-  INSTRUMENT_OPTIONS,
-  RecordControl,
-  VOICE_OPTIONS,
-} from "../hooks/useRecordControl";
+import { RecordControl } from "../hooks/useRecordControl";
+import { Audio } from "expo-av";
+import { InstrumentSelector } from "./InstrumentSelector";
 
 // ------------------------------------
 // Step 1: Idle View
@@ -31,9 +36,8 @@ export const IdleView = ({
   onOpenSheet,
   onStartRecording,
   onUploadFile,
-}: Pick<RecordControl, "onStartRecording"> & {
+}: Pick<RecordControl, "onStartRecording" | "onUploadFile"> & {
   onOpenSheet: () => void;
-  onUploadFIle: () => void;
 }) => (
   <YStack flex={1} ai="center" jc="center" gap="$6" px="$6">
     <Text color="white" fontSize="$5" fontWeight="bold">
@@ -179,102 +183,161 @@ const CustomSelect = ({ options, value, onChange }: any) => (
 
 export const ReviewView = ({
   onConvert,
-  onVoiceTypeChange,
   setInstrument,
-  voiceType,
   instrument,
   isPlaying,
   setIsPlaying,
   duration = 0,
+  uri,
+  onRetake,
 }: Pick<
   RecordControl,
   | "onConvert"
-  | "onVoiceTypeChange"
   | "setInstrument"
-  | "voiceType"
   | "instrument"
   | "isPlaying"
   | "setIsPlaying"
->) => (
-  <ScrollView
-    flex={1}
-    contentContainerStyle={{
-      padding: 24,
-      flexGrow: 1,
-      justifyContent: "center",
-    }}
-  >
-    <YStack gap="$5">
-      <YStack
-        bg="$dark1"
-        p="$4"
-        borderRadius="$4"
-        gap="$3"
-        borderWidth={1}
-        borderColor="$dark3"
-      >
-        <XStack ai="center" jc="space-between">
-          <Text color="$grayText" fontSize="$3">
-            {formatDuration(duration)}
-          </Text>
-          <XStack gap="$1" ai="center" height={40}>
-            {/* Temporary waveform visualization */}
-            {Array.from({ length: 20 }).map((_, i) => (
-              <View
-                key={i}
-                width={3}
-                height={Math.random() * 20 + 10}
-                bg="$accent"
-                borderRadius={2}
-                opacity={0.6}
-              />
-            ))}
+  | "onRetake"
+> & { duration?: number; uri?: string | null }) => {
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, [sound]);
+
+  const handleTogglePlay = async () => {
+    console.log(uri);
+    if (!uri) return;
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+      if (sound) {
+        console.log("check");
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded) {
+          if (status.isPlaying) {
+            await sound.pauseAsync();
+            setIsPlaying(false);
+          } else {
+            if (status.positionMillis >= status.durationMillis!) {
+              await sound.replayAsync();
+            } else {
+              await sound.playAsync();
+            }
+            setIsPlaying(true);
+          }
+        }
+      } else {
+        console.log("check2");
+
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true }
+        );
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setIsPlaying(false);
+          }
+        });
+        setSound(newSound);
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error("Playback failed", error);
+    }
+  };
+
+  const formatDuration = (millis: number) => {
+    const totalSeconds = Math.floor(millis / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  return (
+    <ScrollView
+      flex={1}
+      contentContainerStyle={{
+        padding: 24,
+        flexGrow: 1,
+        justifyContent: "center",
+      }}
+    >
+      <YStack gap="$5">
+        <YStack
+          bg="$dark1"
+          p="$4"
+          borderRadius="$4"
+          gap="$3"
+          borderWidth={1}
+          borderColor="$dark3"
+        >
+          <XStack ai="center" jc="space-between">
+            <Text color="$grayText" fontSize="$3">
+              {formatDuration(duration)}
+            </Text>
+            <XStack gap="$1" ai="center" height={40}>
+              {Array.from({ length: 20 }).map((_, i) => (
+                <View
+                  key={i}
+                  width={3}
+                  height={Math.random() * 20 + 10}
+                  bg="$accent"
+                  borderRadius={2}
+                  opacity={0.6}
+                />
+              ))}
+            </XStack>
+            <Button
+              size="$3"
+              circular
+              icon={isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              onPress={handleTogglePlay}
+            />
           </XStack>
-          <Button
-            size="$3"
-            circular
-            icon={isPlaying ? <Pause size={16} /> : <Play size={16} />}
-            onPress={() => setIsPlaying(!isPlaying)}
-          />
-        </XStack>
-      </YStack>
+        </YStack>
 
-      <YStack gap="$4">
-        <Text color="$grayText" fontSize="$3" ml="$1">
-          Voice Type
-        </Text>
-        <CustomSelect
-          options={VOICE_OPTIONS}
-          value={voiceType}
-          onChange={onVoiceTypeChange}
-        />
-      </YStack>
+        <YStack gap="$2">
+          <YStack gap="$2">
+            <InstrumentSelector value={instrument} onChange={setInstrument} />
+          </YStack>
+        </YStack>
 
-      <YStack gap="$4">
-        <Text color="$grayText" fontSize="$3" ml="$1">
-          Target Instrument
-        </Text>
-        <CustomSelect
-          options={INSTRUMENT_OPTIONS[voiceType]}
-          value={instrument}
-          onChange={setInstrument}
-        />
-      </YStack>
+        <Button
+          mt="$3"
+          size="$5"
+          backgroundColor="$accent"
+          onPress={onConvert}
+          pressStyle={{ bg: "$accentPress" }}
+        >
+          <Text color="white" fontWeight="bold" fontSize="$4">
+            Convert & Save
+          </Text>
+        </Button>
 
-      <Button
-        mt="$3"
-        size="$5"
-        backgroundColor="$accent"
-        onPress={onConvert}
-        pressStyle={{ bg: "$accentPress" }}
-      >
-        <Text color="white" fontWeight="bold" fontSize="$4">
-          Convert & Save
-        </Text>
-      </Button>
-    </YStack>
-  </ScrollView>
-);
+        <Button
+          size="$4"
+          variant="outlined"
+          borderColor="$dark3"
+          color="$red9"
+          icon={<RefreshCcw size={16} />}
+          onPress={onRetake}
+          pressStyle={{ bg: "$dark2", opacity: 0.8 }}
+        >
+          Retake / Cancel
+        </Button>
+      </YStack>
+    </ScrollView>
+  );
+};
 
 // ------------------------------------
 // Step 4: Converting View

@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import { Alert } from "react-native";
 import { MelodizrApiService } from "@/services/MelodizrApiService";
-import { VoiceLibraryService } from "@/services/VoiceLibraryService";
+import { VoiceLibraryService, VoiceItem } from "@/services/VoiceLibraryService";
 import { TrackLibraryService } from "@/services/TrackLibraryService";
 
 interface UseRecordControlProps {
@@ -13,24 +13,21 @@ interface UseRecordControlProps {
 
 export type RecordStep = "idle" | "recording" | "review" | "converting";
 export type VoiceType = "humming" | "beatbox";
-export type InstrumentType = "drum" | "piano" | "bass" | "guitar";
+export type InstrumentType = string;
 
-export const VOICE_OPTIONS: { label: string; value: VoiceType }[] = [
+/* export const VOICE_OPTIONS: { label: string; value: VoiceType }[] = [
   { label: "Humming Voice", value: "humming" },
   { label: "Beatbox", value: "beatbox" },
-];
+]; */
 
-export const INSTRUMENT_OPTIONS: Record<
-  VoiceType,
-  { label: string; value: InstrumentType }[]
-> = {
-  humming: [
-    { label: "Piano", value: "piano" },
-    { label: "Bass", value: "bass" },
-    { label: "Guitar", value: "guitar" },
-  ],
-  beatbox: [{ label: "Drum Kit", value: "drum" }],
-};
+export const INSTRUMENT_OPTIONS = [
+  { label: "Acoustic Guitar", value: "acoustic_guitar" },
+  { label: "Electric Bass", value: "electric_bass" },
+  { label: "Electric Piano", value: "electric_piano" },
+  { label: "Dry Piano", value: "dry_piano" },
+  { label: "Organ", value: "organ" },
+  { label: "String", value: "string" },
+];
 
 const RECORDING_OPTIONS_WAV: Audio.RecordingOptions = {
   isMeteringEnabled: true,
@@ -76,8 +73,8 @@ export const useRecordControl = (
   );
   const [originalFileName, setOriginalFileName] = useState<string>("");
 
-  const [voiceType, setVoiceType] = useState<VoiceType>("humming");
-  const [instrument, setInstrument] = useState<InstrumentType>("piano");
+  /*   const [voiceType, setVoiceType] = useState<VoiceType>("humming"); */
+  const [instrument, setInstrument] = useState<InstrumentType>("dry_piano");
   const [isPlaying, setIsPlaying] = useState(false);
 
   const snapPoints = useMemo(() => ["60%"], []);
@@ -111,6 +108,17 @@ export const useRecordControl = (
     }
   }, []);
 
+  const prepareForPlayback = async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false, // [중요] 녹음 모드 끄기 -> 스피커 출력 활성화
+        playsInSilentModeIOS: true,
+      });
+    } catch (e) {
+      console.error("Audio mode setup failed", e);
+    }
+  };
+
   const onStopRecording = useCallback(async () => {
     if (!recording) return;
 
@@ -131,6 +139,8 @@ export const useRecordControl = (
       if (uri) {
         setTempUri(uri);
         setTempDuration(finalDuration);
+
+        await prepareForPlayback();
         setStep("review");
       } else {
         setStep("idle");
@@ -151,6 +161,11 @@ export const useRecordControl = (
       if (result.canceled) return;
       const asset = result.assets[0];
 
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+
       const { sound } = await Audio.Sound.createAsync(
         { uri: asset.uri },
         { shouldPlay: false }
@@ -163,90 +178,51 @@ export const useRecordControl = (
       setTempDuration(duration);
       setSourceType("file");
       setOriginalFileName(asset.name);
+      await prepareForPlayback();
       setStep("review");
     } catch (err) {
       console.error("Failed to upload file", err);
     }
   }, []);
 
-  /* const onConvert = useCallback(async () => {
-    if (!tempUri) return;
-
-    try {
-      setStep("converting");
-      const convertedUri = await MelodizrApiService.convertAudio(
-        tempUri,
-        instrument
-      );
-
-      const savedVoice = await VoiceLibraryService.saveVoice(
-        tempUri,
-        tempDuration,
-        voiceType
-      );
-
-      const newTrack = {
-        id: Date.now().toString(),
-        title: `${
-          instrument.charAt(0).toUpperCase() + instrument.slice(1)
-        } Track`,
-        duration: formatDuration(tempDuration),
-        uri: convertedUri,
-        originalVoiceId: savedVoice.id,
-      };
-
-      if (onConversionComplete) {
-        onConversionComplete(savedVoice, newTrack);
-      }
-      onCloseSheet();
-    } catch (error) {
-      console.error("Conversion failed:", error);
-      alert("변환에 실패했습니다. 다시 시도해주세요.");
-      setStep("review");
-    }
-  }, [tempUri, tempDuration, voiceType, instrument, onConversionComplete]); */
-
   const onConvert = useCallback(async () => {
     if (!tempUri) {
-      Alert.alert("알림");
+      Alert.alert("알림", "No File.");
       return;
     }
 
     try {
-      setStep("converting"); // 로딩 상태
-      console.log("check");
+      setStep("converting");
+
       const convertedUri = await MelodizrApiService.convertAudio(
         tempUri,
-        instrument, // 선택한 악기 (piano, guitar 등)
-        "off", // keyMode
-        "None", // keyHint (성공 사례에 맞춰 대소문자 유지)
-        "concert" // textPrompt
+        instrument,
+        "off",
+        "None",
+        "None"
       );
 
-      console.log(convertedUri, "check");
-
-      // 1. 원본 보이스 저장
+      // 2) 원본 저장
       const savedVoice = await VoiceLibraryService.saveVoice(
         tempUri,
         tempDuration,
-        voiceType,
-        sourceType, // "recording" | "file"
+        "humming",
+        sourceType,
         sourceType === "file" ? originalFileName : undefined
       );
 
-      // 2. 변환된 트랙 데이터 생성
+      const selectedInstLabel =
+        INSTRUMENT_OPTIONS.find((i) => i.value === instrument)?.label ||
+        instrument;
+
       const newTrack = {
         id: Date.now().toString(),
-        title: `${
-          instrument.charAt(0).toUpperCase() + instrument.slice(1)
-        } (Converted)`,
+        title: `${selectedInstLabel} (Converted)`,
         duration: formatDuration(tempDuration),
         uri: convertedUri,
         originalVoiceId: savedVoice.id,
         createdAt: Date.now(),
       };
-
-      // 3. 완료 처리
 
       await TrackLibraryService.saveTrack(newTrack);
 
@@ -257,10 +233,17 @@ export const useRecordControl = (
       onCloseSheet();
     } catch (error) {
       console.error("Conversion failed:", error);
-      Alert.alert("변환 실패");
+      Alert.alert("변환 실패", "network error");
       setStep("review");
     }
-  }, [tempUri, tempDuration, voiceType, instrument, onConversionComplete]);
+  }, [
+    tempUri,
+    tempDuration,
+    instrument,
+    sourceType,
+    originalFileName,
+    onConversionComplete,
+  ]);
 
   const onCloseSheet = useCallback(() => {
     setStep("idle");
@@ -271,14 +254,38 @@ export const useRecordControl = (
     ref.current?.close();
   }, [ref]);
 
+  const startFromExistingVoice = useCallback(
+    (voice: VoiceItem) => {
+      setTempUri(voice.uri);
+      setTempDuration(voice.duration);
+      setSourceType(voice.sourceType);
+
+      if (voice.sourceType === "file") {
+        setOriginalFileName(voice.title);
+      }
+
+      setStep("review");
+      ref.current?.expand();
+    },
+    [ref]
+  );
+
+  const onRetake = useCallback(() => {
+    setTempUri(null);
+    setTempDuration(0);
+    setSourceType("recording");
+    setOriginalFileName("");
+    setStep("idle");
+  }, []);
+
   return {
     step,
-    voiceType,
     instrument,
     isPlaying,
     snapPoints,
     durationMillis,
     tempDuration,
+    tempUri,
     setStep,
     setInstrument,
     setIsPlaying,
@@ -286,8 +293,9 @@ export const useRecordControl = (
     onStopRecording,
     onUploadFile,
     onConvert,
-    onVoiceTypeChange: setVoiceType,
     onCloseSheet,
+    startFromExistingVoice,
+    onRetake,
   };
 };
 

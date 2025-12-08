@@ -188,9 +188,6 @@ const VoiceCard = ({
         <Text color="$grayText" fontSize="$3" fontFamily="$body">
           {formattedDuration}
         </Text>
-        {/* <Text color="$grayText" fontSize="$3" fontFamily="$body">
-          {voice.duration}
-        </Text> */}
       </XStack>
 
       <XStack ai="center" gap="$3" height={40}>
@@ -201,9 +198,9 @@ const VoiceCard = ({
           pressStyle={{ opacity: 0.8 }}
           icon={
             isPlaying ? (
-              <Pause size={16} color="$dark1" fill="$dark1" />
+              <Pause size={16} color="$dark1" /* fill="$dark1" */ />
             ) : (
-              <Play size={16} color="$dark1" fill="$dark1" ml={2} />
+              <Play size={16} color="$dark1" /* fill="$dark1" */ ml={2} />
             )
           }
           onPress={onPlay}
@@ -217,6 +214,14 @@ const VoiceCard = ({
           chromeless
           onPress={onConvert}
           icon={<Shuffle size={20} color="white" />}
+        />
+
+        <Button
+          size="$3"
+          circular
+          chromeless
+          onPress={onOpenMenu}
+          icon={<MoreVertical size={20} color="white" />} // [수정] $grayText -> $textSecondary
         />
       </XStack>
     </YStack>
@@ -273,16 +278,6 @@ const VoiceActionSheet = ({ voice, onClose, onDelete, onConvert }: any) => (
       <Text color="$grayText" mb="$2" ml="$2" fontWeight="bold">
         Actions for {voice.title}
       </Text>
-
-      <Button
-        onPress={onConvert}
-        size="$5"
-        bg="$dark1"
-        jc="flex-start"
-        icon={RefreshCcw}
-      >
-        Convert to Instrument
-      </Button>
 
       <Button
         onPress={onDelete}

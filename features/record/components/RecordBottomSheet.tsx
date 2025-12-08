@@ -1,4 +1,10 @@
-import React, { forwardRef, useCallback, useMemo, useRef } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useMemo,
+  useRef,
+  useImperativeHandle,
+} from "react";
 import BottomSheet, {
   BottomSheetView,
   BottomSheetBackdrop,
@@ -13,6 +19,14 @@ import {
   RecordingView,
   ReviewView,
 } from "./RecordModalViews";
+import { VoiceItem } from "@/services/VoiceLibraryService";
+
+export interface RecordBottomSheetHandle {
+  expand: () => void;
+  close: () => void;
+  openForConversion: (voice: VoiceItem) => void;
+  onConversionComplete?: (voice: any, track: any) => void;
+}
 
 interface RecordBottomSheetProps {
   onConversionComplete?: (voice: any, track: any) => void;
@@ -45,11 +59,13 @@ const CustomHandle = () => {
 };
 
 export const RecordBottomSheet = forwardRef<
-  BottomSheet,
-  RecordBottomSheetProps
+  RecordBottomSheetProps,
+  RecordBottomSheetHandle
 >((props, ref) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+
+  const bottomSheetRef = React.useRef<BottomSheet>(null);
 
   const control = useRecordControl(ref as React.RefObject<BottomSheet>, {
     onConversionComplete: props.onConversionComplete,
@@ -60,17 +76,26 @@ export const RecordBottomSheet = forwardRef<
     onStartRecording,
     onStopRecording,
     onConvert,
-    onVoiceTypeChange,
     setInstrument,
     setIsPlaying,
-    voiceType,
     instrument,
     isPlaying,
     onCloseSheet,
     durationMillis,
     tempDuration,
+    tempUri,
     onUploadFile,
+    startFromExistingVoice,
+    onRetake,
   } = control;
+
+  useImperativeHandle(ref, () => ({
+    expand: () => bottomSheetRef.current?.expand(),
+    close: () => bottomSheetRef.current?.close(),
+    openForConversion: (voice: VoiceItem) => {
+      startFromExistingVoice(voice); // 훅의 함수 호출
+    },
+  }));
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -97,13 +122,13 @@ export const RecordBottomSheet = forwardRef<
         return (
           <ReviewView
             onConvert={onConvert}
-            onVoiceTypeChange={onVoiceTypeChange}
             setInstrument={setInstrument}
-            voiceType={voiceType}
             instrument={instrument}
             isPlaying={isPlaying}
             setIsPlaying={setIsPlaying}
             duration={tempDuration}
+            uri={tempUri}
+            onRetake={onRetake}
           />
         );
       case "converting":
@@ -118,19 +143,11 @@ export const RecordBottomSheet = forwardRef<
           />
         );
     }
-  }, [
-    step,
-    control,
-    durationMillis,
-    tempDuration,
-    isPlaying,
-    voiceType,
-    instrument,
-  ]);
+  }, [step, control, durationMillis, tempDuration, isPlaying, instrument]);
 
   return (
     <BottomSheet
-      ref={ref}
+      ref={bottomSheetRef}
       index={-1}
       snapPoints={snapPoints}
       enableDynamicSizing={false}

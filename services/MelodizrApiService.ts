@@ -30,7 +30,7 @@ export const MelodizrApiService = {
       formData.append("instrument", instrument);
       formData.append("key_mode", keyMode);
       formData.append("key_hint", keyHint);
-      formData.append("text_prompt", textPrompt);
+      formData.append("text_prompt", "None");
 
       formData.append("wav_only", "true");
 

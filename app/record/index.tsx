@@ -13,14 +13,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RecordHeader } from "@/features/record/components/RecordHeader";
 import { TrackList, type Track } from "@/features/record/components/TrackList";
 import { RecordBottomBar } from "@/features/record/components/RecordBottomBarProps";
-import { RecordBottomSheet } from "@/features/record/components/RecordBottomSheet";
+import {
+  RecordBottomSheet,
+  RecordBottomSheetHandle,
+} from "@/features/record/components/RecordBottomSheet";
 import { VoiceList } from "@/features/record/components/VoiceList";
 import { VoiceLibraryService, VoiceItem } from "@/services/VoiceLibraryService";
 import { TrackLibraryService } from "@/services/TrackLibraryService";
 
 export default function RecordPage() {
   const insets = useSafeAreaInsets();
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const bottomSheetRef = useRef<RecordBottomSheetHandle>(null);
   const [isProjectTab, setIsProjectTab] = useState(true);
   const [voiceLibrary, setVoiceLibrary] = useState<VoiceItem[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -77,6 +80,15 @@ export default function RecordPage() {
     bottomSheetRef.current?.expand();
   }, []);
 
+  const handleDeleteTrack = async (track: Track) => {
+    await TrackLibraryService.deleteTrack(track.id);
+    await loadTracks(); // 목록 갱신
+  };
+
+  const handleConvertFromVoice = (voice: VoiceItem) => {
+    bottomSheetRef.current?.openForConversion(voice);
+  };
+
   const onRecordingFinished = async (uri: string, duration: number) => {
     console.log("Saving recording:", uri);
 
@@ -95,14 +107,16 @@ export default function RecordPage() {
       <RecordHeader isProject={isProjectTab} onTabChange={setIsProjectTab} />
 
       {isProjectTab ? (
-        <TrackList tracks={tracks} onStartRecording={handleOpenSheet} />
+        <TrackList
+          tracks={tracks}
+          onStartRecording={handleOpenSheet}
+          onDeleteTrack={handleDeleteTrack}
+        />
       ) : (
         <VoiceList
           voices={voiceLibrary}
           onDeleteVoice={loadVoices}
-          onConvertVoice={() => {
-            console.log("Voice list convert implementation needed");
-          }}
+          onConvertVoice={handleConvertFromVoice}
         />
       )}
 

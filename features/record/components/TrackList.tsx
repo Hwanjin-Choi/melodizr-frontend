@@ -32,9 +32,14 @@ export interface Track {
 interface TrackListProps {
   tracks: Track[];
   onStartRecording: () => void;
+  onDeleteTrack: (track: Track) => void;
 }
 
-export const TrackList = ({ tracks, onStartRecording }: TrackListProps) => {
+export const TrackList = ({
+  tracks,
+  onStartRecording,
+  onDeleteTrack,
+}: TrackListProps) => {
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
 
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -147,6 +152,11 @@ export const TrackList = ({ tracks, onStartRecording }: TrackListProps) => {
         <CustomActionSheet
           track={selectedTrack}
           onClose={() => setSelectedTrack(null)}
+          onDelete={() => {
+            // [수정] 삭제 버튼 클릭 시
+            onDeleteTrack(selectedTrack);
+            setSelectedTrack(null);
+          }}
         />
       )}
     </ZStack>
@@ -277,9 +287,11 @@ const WaveformVisualizer = ({ color }: { color: string }) => {
 const CustomActionSheet = ({
   track,
   onClose,
+  onDelete,
 }: {
   track: Track;
   onClose: () => void;
+  onDelete: () => void;
 }) => {
   return (
     <ZStack fullscreen>
@@ -334,8 +346,7 @@ const CustomActionSheet = ({
           label="Delete Track"
           isDestructive
           onPress={() => {
-            console.log("Delete");
-            onClose();
+            onDelete();
           }}
         />
       </YStack>
