@@ -9,7 +9,7 @@ export function GlobalRecordButton() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
-  if (pathname === "/record") return null;
+  if (pathname.includes("/record")) return null;
 
   return (
     <Button
@@ -26,7 +26,7 @@ export function GlobalRecordButton() {
       shadowOpacity={0.3}
       shadowRadius={4}
       pressStyle={{ backgroundColor: "$accentPress" }}
-      onPress={() => router.push("/record")}
+      onPress={() => router.push("/record/new")}
       icon={<Mic size={28} color="white" />}
     />
   );

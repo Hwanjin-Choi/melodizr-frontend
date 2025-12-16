@@ -1,6 +1,5 @@
 import * as FileSystem from "expo-file-system";
 
-// 성공하신 웹 테스트의 서버 주소
 const API_URL = "http://211.188.59.35:1000/melodizr_api/";
 
 export const MelodizrApiService = {
@@ -77,16 +76,12 @@ export const MelodizrApiService = {
     } catch (error) {
       console.error("============== [API Error Debug] ==============");
 
-      // 1. 에러의 기본 메시지 확인
       if (error instanceof Error) {
         console.error("Error Message:", error.message);
         console.error("Error Stack:", error.stack);
       } else {
         console.error("Unknown Error:", error);
       }
-
-      // 2. 혹시 네트워크 요청 자체가 실패했는지 확인 (TypeError: Network request failed)
-      // 이 경우 보통 'http' 허용 설정 문제거나, 서버 주소 접속 불가 문제입니다.
 
       console.error("===============================================");
       throw error;
