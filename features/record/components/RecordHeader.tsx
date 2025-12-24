@@ -5,10 +5,15 @@ import { Button, Separator, Text, XStack, YStack } from "tamagui";
 
 interface RecordHeaderProps {
   isProject: boolean;
+  title: Text;
   onTabChange: (isProject: boolean) => void;
 }
 
-export const RecordHeader = ({ isProject, onTabChange }: RecordHeaderProps) => {
+export const RecordHeader = ({
+  isProject,
+  onTabChange,
+  title,
+}: RecordHeaderProps) => {
   const router = useRouter();
 
   return (

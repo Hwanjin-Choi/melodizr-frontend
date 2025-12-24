@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system";
 
-const API_URL = "http://211.188.59.35:1000/melodizr_api/";
+const API_URL = "http://142.170.89.112:20666/melodizr_api/";
 
 export const MelodizrApiService = {
   convertAudio: async (

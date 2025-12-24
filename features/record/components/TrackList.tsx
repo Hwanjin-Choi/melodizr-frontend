@@ -9,9 +9,12 @@ import {
   VolumeX,
   X,
   Volume2,
+  Pencil,
+  Check,
 } from "@tamagui/lucide-icons";
 import React, { useState, useMemo, useEffect } from "react";
 import { Audio } from "expo-av";
+import * as Sharing from "expo-sharing";
 import {
   Button,
   Circle,
@@ -21,6 +24,7 @@ import {
   YStack,
   ZStack,
   Spacer,
+  Input,
 } from "tamagui";
 import { getSmartUri } from "@/utils/pathUtils";
 
@@ -37,6 +41,7 @@ interface TrackListProps {
   onStartRecording: () => void;
   onDeleteTrack: (track: Track) => void;
   onToggleMute?: (trackId: string) => void;
+  onRenameTrack?: (trackId: string, newTitle: string) => void;
 }
 
 export const TrackList = ({
@@ -44,8 +49,11 @@ export const TrackList = ({
   onStartRecording,
   onDeleteTrack,
   onToggleMute,
+  onRenameTrack,
 }: TrackListProps) => {
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -88,6 +96,37 @@ export const TrackList = ({
       setPlayingId(track.id);
     } catch (error) {
       console.error("Track playback failed", error);
+    }
+  };
+
+  const handleRenameSubmit = (trackId: string, newTitle: string) => {
+    if (onRenameTrack) {
+      onRenameTrack(trackId, newTitle);
+    }
+    setEditingId(null);
+  };
+
+  const handleShareTrack = async (track: Track) => {
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      alert("Sharing is not available on this device");
+      return;
+    }
+
+    const uri = getSmartUri(track.uri);
+    if (!uri) {
+      console.error("No URI found for track");
+      return;
+    }
+
+    try {
+      await Sharing.shareAsync(uri, {
+        dialogTitle: `Share ${track.title}`, // Android 전용 타이틀
+        mimeType: "audio/x-m4a", // 오디오 파일 타입 지정 (필요 시 수정)
+        UTI: "public.audio", // iOS 전용 타입 지정
+      });
+    } catch (error) {
+      console.error("Error sharing track:", error);
     }
   };
 
@@ -147,6 +186,11 @@ export const TrackList = ({
               isPlaying={playingId === track.id}
               onPlay={() => handlePlay(track)}
               onToggleMute={() => onToggleMute?.(track.id)}
+              isEditing={editingId === track.id}
+              onRenameSubmit={(newTitle) =>
+                handleRenameSubmit(track.id, newTitle)
+              }
+              onCancelEdit={() => setEditingId(null)}
             />
           ))}
         </YStack>
@@ -160,33 +204,53 @@ export const TrackList = ({
             onDeleteTrack(selectedTrack);
             setSelectedTrack(null);
           }}
+          onStartRename={() => {
+            setEditingId(selectedTrack.id);
+            setSelectedTrack(null);
+          }}
+          onShare={() => {
+            handleShareTrack(selectedTrack);
+            setSelectedTrack(null);
+          }}
         />
       )}
     </ZStack>
   );
 };
 
-// --- [개별 트랙 아이템] ---
 const TrackItem = ({
   track,
   onOpenMenu,
   isPlaying,
   onPlay,
   onToggleMute,
+  isEditing,
+  onRenameSubmit,
+  onCancelEdit,
 }: {
   track: Track;
   onOpenMenu: () => void;
   isPlaying: boolean;
   onPlay: () => void;
   onToggleMute: () => void;
+  isEditing: boolean;
+  onRenameSubmit: (text: string) => void;
+  onCancelEdit: () => void;
 }) => {
   const isMuted = track.isMuted ?? false;
+  const [editTitle, setEditTitle] = useState(track.title);
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditTitle(track.title);
+    }
+  }, [isEditing, track.title]);
 
   return (
     <ZStack
       height={90}
       borderRadius="$4"
-      onPress={onToggleMute}
+      onPress={isEditing ? undefined : onToggleMute}
       overflow="hidden"
     >
       <YStack
@@ -194,29 +258,70 @@ const TrackItem = ({
         bg="$dark2"
         p="$3"
         justifyContent="space-between"
-        opacity={isMuted ? 0.3 : 1}
+        opacity={isMuted && !isEditing ? 0.3 : 1}
       >
-        <XStack jc="space-between" ai="center">
-          <Text
-            color="white"
-            fontWeight="bold"
-            fontSize="$4"
-            textDecorationLine={isMuted ? "line-through" : "none"}
-          >
-            {track.title}
-          </Text>
-          <Text color="$grayText" fontSize="$3">
-            {track.duration}
-          </Text>
+        <XStack jc="space-between" ai="center" height={30}>
+          {isEditing ? (
+            <XStack f={1} ai="center" gap="$2">
+              <Input
+                f={1}
+                size="$2"
+                value={editTitle}
+                onChangeText={setEditTitle}
+                autoFocus
+                onSubmitEditing={() => onRenameSubmit(editTitle)}
+                bg="$dark1"
+                color="white"
+                borderWidth={0}
+              />
+              <Button
+                size="$2"
+                circular
+                icon={Check}
+                bg="$green8"
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onRenameSubmit(editTitle);
+                }}
+              />
+              <Button
+                size="$2"
+                circular
+                icon={X}
+                bg="$red8"
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onCancelEdit();
+                }}
+              />
+            </XStack>
+          ) : (
+            <>
+              <Text
+                color="white"
+                fontWeight="bold"
+                fontSize="$4"
+                textDecorationLine={isMuted ? "line-through" : "none"}
+                numberOfLines={1}
+                f={1}
+                mr="$2"
+              >
+                {track.title}
+              </Text>
+              <Text color="$grayText" fontSize="$3">
+                {track.duration}
+              </Text>
+            </>
+          )}
         </XStack>
 
-        <XStack ai="center" gap="$3">
+        <XStack ai="center" gap="$3" opacity={isEditing ? 0.5 : 1}>
           <Circle
             size="$3"
             bg={isPlaying ? "$accent" : "$grayText"}
             onPress={(e) => {
               e.stopPropagation();
-              if (!isMuted) onPlay();
+              if (!isMuted && !isEditing) onPlay();
             }}
           >
             {isPlaying ? (
@@ -238,6 +343,7 @@ const TrackItem = ({
             size="$3"
             circular
             chromeless
+            disabled={isEditing}
             onPress={(e) => {
               e.stopPropagation();
               onOpenMenu();
@@ -248,7 +354,7 @@ const TrackItem = ({
         </XStack>
       </YStack>
 
-      {isMuted && (
+      {isMuted && !isEditing && (
         <YStack
           fullscreen
           ai="center"
@@ -301,10 +407,14 @@ const CustomActionSheet = ({
   track,
   onClose,
   onDelete,
+  onStartRename,
+  onShare,
 }: {
   track: Track;
   onClose: () => void;
   onDelete: () => void;
+  onStartRename: () => void;
+  onShare: () => void;
 }) => {
   return (
     <ZStack fullscreen>
@@ -344,15 +454,21 @@ const CustomActionSheet = ({
         </XStack>
 
         <ActionButton
+          icon={Pencil}
+          label="Rename Track"
+          onPress={() => {
+            onStartRename();
+          }}
+        />
+
+        <ActionButton
           icon={Share}
           label="Share Track"
           onPress={() => {
             console.log("Share");
-            onClose();
+            onShare();
           }}
         />
-
-        <Spacer size="$2" />
 
         <ActionButton
           icon={Trash2}

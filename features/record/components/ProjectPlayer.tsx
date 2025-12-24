@@ -1,7 +1,24 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { Audio } from "expo-av";
-import { View, Text, YStack, XStack, Button, Slider, Circle } from "tamagui";
-import { Play, Pause, SkipBack, SkipForward } from "@tamagui/lucide-icons";
+import {
+  View,
+  Text,
+  YStack,
+  XStack,
+  Button,
+  Slider,
+  Circle,
+  Input,
+} from "tamagui";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Check,
+  X,
+  Pencil,
+} from "@tamagui/lucide-icons";
 import { parseDurationToMillis, formatMillisToTime } from "@/utils/formatUtils";
 import { type Track } from "@/features/record/components/TrackList";
 import { getSmartUri } from "@/utils/pathUtils";
@@ -15,16 +32,24 @@ import { getSmartUri } from "@/utils/pathUtils";
 
 interface ProjectPlayerProps {
   layers: Track[];
+  title: string;
+  onTitleChange: (newTitle: string) => void;
 }
 
-export const ProjectPlayer = ({ layers }: ProjectPlayerProps) => {
+export const ProjectPlayer = ({
+  layers,
+  title,
+  onTitleChange,
+}: ProjectPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [maxDuration, setMaxDuration] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const soundsRef = useRef<Audio.Sound[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(title);
 
+  const soundsRef = useRef<Audio.Sound[]>([]);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -34,6 +59,10 @@ export const ProjectPlayer = ({ layers }: ProjectPlayerProps) => {
     );
     setMaxDuration(max);
   }, [layers]);
+
+  useEffect(() => {
+    setEditTitle(title);
+  }, [title]);
 
   useEffect(() => {
     const loadSounds = async () => {
@@ -142,6 +171,20 @@ export const ProjectPlayer = ({ layers }: ProjectPlayerProps) => {
     await Promise.all(soundsRef.current.map((s) => s.setPositionAsync(value)));
   };
 
+  const saveTitle = () => {
+    if (editTitle.trim()) {
+      onTitleChange(editTitle);
+    } else {
+      setEditTitle(title);
+    }
+    setIsEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setEditTitle(title);
+    setIsEditing(false);
+  };
+
   return (
     <YStack
       bg="$dark2"
@@ -153,12 +196,51 @@ export const ProjectPlayer = ({ layers }: ProjectPlayerProps) => {
       mt="$4"
     >
       <XStack jc="space-between" ai="center">
-        <Text color="white" fontWeight="bold" fontSize="$5">
-          Master Player
-        </Text>
-        <Text color="$grayText" fontSize="$3">
-          {layers.length} Tracks
-        </Text>
+        {isEditing ? (
+          <XStack f={1} ai="center" gap="$2">
+            <Input
+              value={editTitle}
+              onChangeText={setEditTitle}
+              f={1}
+              size="$3"
+              bg="$dark1"
+              color="white"
+              autoFocus
+            />
+            <Button
+              size="$2"
+              circular
+              icon={Check}
+              onPress={saveTitle}
+              bg="$green8"
+            />
+            <Button
+              size="$2"
+              circular
+              icon={X}
+              onPress={cancelEdit}
+              bg="$red8"
+            />
+          </XStack>
+        ) : (
+          <XStack ai="center" gap="$2" onPress={() => setIsEditing(true)}>
+            <Text
+              color="white"
+              fontWeight="bold"
+              fontSize="$5"
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            <Pencil size={14} color="$grayText" />
+          </XStack>
+        )}
+
+        {!isEditing && (
+          <Text color="$grayText" fontSize="$3">
+            {layers.length} Tracks
+          </Text>
+        )}
       </XStack>
 
       <XStack jc="space-between">

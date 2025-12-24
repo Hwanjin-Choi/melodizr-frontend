@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TrackItem } from "./TrackLibraryService";
 import * as Crypto from "expo-crypto";
+import * as FileSystem from "expo-file-system";
 
 export interface Project {
   id: string;
@@ -16,7 +17,6 @@ export interface ProjectSummary {
   updatedAt: number;
 }
 
-//todo - testflight update into env for better approach
 const PROJECT_INDEX_KEY = "@melodizr_project_index";
 const PROJECT_PREFIX = "@melodizr_project_";
 
@@ -39,7 +39,6 @@ export const ProjectService = {
         JSON.stringify(newProject)
       );
 
-      // 인덱스(목록) 업데이트
       await ProjectService.addToIndex({
         id: newProjectId,
         title: newProject.title,
@@ -65,6 +64,39 @@ export const ProjectService = {
       await ProjectService.updateIndexTime(project.id, updatedProject.title);
     } catch (e) {
       console.error("Failed to update project", e);
+    }
+  },
+
+  renameProject: async (id: string, newTitle: string): Promise<void> => {
+    try {
+      const project = await ProjectService.getProject(id);
+      if (project) {
+        const updatedProject = { ...project, title: newTitle };
+        await ProjectService.updateProject(updatedProject);
+      }
+    } catch (e) {
+      console.error("Failed to rename project", e);
+      throw e;
+    }
+  },
+
+  renameTrack: async (
+    projectId: string,
+    trackId: string,
+    newTitle: string
+  ): Promise<void> => {
+    try {
+      const project = await ProjectService.getProject(projectId);
+      if (project) {
+        const updatedTracks = project.tracks.map((t) =>
+          t.id === trackId ? { ...t, title: newTitle } : t
+        );
+        const updatedProject = { ...project, tracks: updatedTracks };
+        await ProjectService.updateProject(updatedProject);
+      }
+    } catch (e) {
+      console.error("Failed to rename track", e);
+      throw e;
     }
   },
 
@@ -105,6 +137,33 @@ export const ProjectService = {
       list.splice(targetIndex, 1);
       list.unshift({ ...target, title, updatedAt: Date.now() });
       await AsyncStorage.setItem(PROJECT_INDEX_KEY, JSON.stringify(list));
+    }
+  },
+
+  deleteProject: async (id: string): Promise<void> => {
+    try {
+      const project = await ProjectService.getProject(id);
+
+      if (project && project.tracks) {
+        for (const track of project.tracks) {
+          if (track.uri) {
+            try {
+              await FileSystem.deleteAsync(track.uri, { idempotent: true });
+            } catch (err) {
+              console.log(`Failed to delete file: ${track.uri}`, err);
+            }
+          }
+        }
+      }
+
+      await AsyncStorage.removeItem(`${PROJECT_PREFIX}${id}`);
+
+      const list = await ProjectService.getProjectList();
+      const newList = list.filter((p) => p.id !== id);
+      await AsyncStorage.setItem(PROJECT_INDEX_KEY, JSON.stringify(newList));
+    } catch (e) {
+      console.error("Failed to delete project", e);
+      throw e;
     }
   },
 };

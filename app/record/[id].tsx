@@ -28,6 +28,17 @@ export default function RecordProjectPage() {
   const [isProjectTab, setIsProjectTab] = useState(true);
   const [voiceLibrary, setVoiceLibrary] = useState<VoiceItem[]>([]);
 
+  const handleTitleChange = async (newTitle: string) => {
+    if (!project) return;
+
+    const updatedProject = { ...project, title: newTitle };
+    setProject(updatedProject);
+
+    if (!isNewProject) {
+      await ProjectService.updateProject(updatedProject);
+    }
+  };
+
   const loadVoices = async () => {
     try {
       const voices = await VoiceLibraryService.getVoices();
@@ -113,6 +124,20 @@ export default function RecordProjectPage() {
     bottomSheetRef.current?.openForConversion(voice);
   };
 
+  const handleRenameTrack = async (trackId: string, newName: string) => {
+    if (!project) return;
+
+    const updatedTracks = project.tracks.map((t) =>
+      t.id === trackId ? { ...t, title: newName } : t
+    );
+    const updatedProject = { ...project, tracks: updatedTracks };
+    setProject(updatedProject);
+
+    if (!isNewProject) {
+      await ProjectService.renameTrack(project.id, trackId, newName);
+    }
+  };
+
   if (!project) {
     return (
       <YStack flex={1} bg="$background" ai="center" jc="center">
@@ -137,7 +162,11 @@ export default function RecordProjectPage() {
         <YStack flex={1}>
           {project.tracks.length > 0 && (
             <YStack px="$4" pb="$4">
-              <ProjectPlayer layers={activeTracks} />
+              <ProjectPlayer
+                layers={activeTracks}
+                title={project.title}
+                onTitleChange={handleTitleChange}
+              />
             </YStack>
           )}
 
@@ -151,6 +180,7 @@ export default function RecordProjectPage() {
               );
               setProject({ ...project, tracks: updatedTracks });
             }}
+            onRenameTrack={handleRenameTrack}
           />
         </YStack>
       ) : (
