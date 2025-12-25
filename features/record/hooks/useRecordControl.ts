@@ -73,8 +73,9 @@ export const useRecordControl = (
   );
   const [originalFileName, setOriginalFileName] = useState<string>("");
 
-  /*   const [voiceType, setVoiceType] = useState<VoiceType>("humming"); */
+  /* const [voiceType, setVoiceType] = useState<VoiceType>("humming"); */
   const [instrument, setInstrument] = useState<InstrumentType>("dry_piano");
+  const [textPrompt, setTextPrompt] = useState<string>("");
   const [isPlaying, setIsPlaying] = useState(false);
 
   const snapPoints = useMemo(() => ["60%"], []);
@@ -111,7 +112,7 @@ export const useRecordControl = (
   const prepareForPlayback = async () => {
     try {
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false, // [중요] 녹음 모드 끄기 -> 스피커 출력 활성화
+        allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
       });
     } catch (e) {
@@ -197,10 +198,9 @@ export const useRecordControl = (
         instrument,
         "off",
         "None",
-        "None"
+        textPrompt || "None" // Pass user prompt or "None"
       );
 
-      // 2) 원본 저장
       const savedVoice = await VoiceLibraryService.saveVoice(
         tempUri,
         tempDuration,
@@ -241,6 +241,7 @@ export const useRecordControl = (
     sourceType,
     originalFileName,
     onConversionComplete,
+    textPrompt, // Depend on textPrompt
   ]);
 
   const onCloseSheet = useCallback(() => {
@@ -249,6 +250,7 @@ export const useRecordControl = (
     setDurationMillis(0);
     setTempUri(null);
     setTempDuration(0);
+    setTextPrompt("");
     ref.current?.close();
   }, [ref]);
 
@@ -273,12 +275,15 @@ export const useRecordControl = (
     setTempDuration(0);
     setSourceType("recording");
     setOriginalFileName("");
+    setTextPrompt("");
     setStep("idle");
   }, []);
 
   return {
     step,
     instrument,
+    textPrompt,
+    setTextPrompt,
     isPlaying,
     snapPoints,
     durationMillis,

@@ -6,7 +6,7 @@ import {
   RefreshCcw,
   Trash2,
 } from "@tamagui/lucide-icons";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -24,7 +24,9 @@ import {
   XStack,
   YStack,
   Stack,
+  useTheme,
 } from "tamagui";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet"; // Import BottomSheetTextInput
 import { RecordControl } from "../hooks/useRecordControl";
 import { Audio } from "expo-av";
 import { InstrumentSelector } from "./InstrumentSelector";
@@ -105,7 +107,7 @@ export const RecordingWaveform = () => (
 );
 export const RecordingView = ({
   onStopRecording,
-  durationMillis = 0, // props로 시간 받음
+  durationMillis = 0,
 }: Pick<RecordControl, "onStopRecording"> & { durationMillis?: number }) => (
   <YStack flex={1} ai="center" jc="center" px="$6" gap="$5">
     <Text color="white" fontSize="$5" fontWeight="bold">
@@ -155,36 +157,12 @@ export const RecordingView = ({
 // ------------------------------------
 // Step 3: Review View
 // ------------------------------------
-const CustomSelect = ({ options, value, onChange }: any) => (
-  <XStack gap="$2" flexWrap="wrap">
-    {options.map((opt: any) => {
-      const isSelected = value === opt.value;
-      return (
-        <Button
-          key={opt.value}
-          size="$3"
-          borderWidth={1}
-          borderColor={isSelected ? "$accent" : "$dark3"}
-          backgroundColor={isSelected ? "$accent" : "transparent"}
-          onPress={() => onChange(opt.value)}
-          pressStyle={{ opacity: 0.8 }}
-        >
-          <Text
-            color={isSelected ? "white" : "$grayText"}
-            fontWeight={isSelected ? "bold" : "normal"}
-          >
-            {opt.label}
-          </Text>
-        </Button>
-      );
-    })}
-  </XStack>
-);
-
 export const ReviewView = ({
   onConvert,
   setInstrument,
   instrument,
+  textPrompt,
+  setTextPrompt,
   isPlaying,
   setIsPlaying,
   duration = 0,
@@ -198,8 +176,11 @@ export const ReviewView = ({
   | "isPlaying"
   | "setIsPlaying"
   | "onRetake"
+  | "textPrompt"
+  | "setTextPrompt"
 > & { duration?: number; uri?: string | null }) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     return () => {
@@ -262,6 +243,16 @@ export const ReviewView = ({
       .padStart(2, "0")}`;
   };
 
+  //TODO replace something for default prompt, left something for now
+  const placeholderText = useMemo(() => {
+    if (instrument.includes("piano") || instrument.includes("organ")) {
+      return 'Try "wet" or "church"';
+    } else if (instrument.includes("guitar") || instrument.includes("bass")) {
+      return 'Try "metal" or "jazz"';
+    }
+    return "Try something";
+  }, [instrument]);
+
   return (
     <ScrollView
       flex={1}
@@ -270,6 +261,7 @@ export const ReviewView = ({
         flexGrow: 1,
         justifyContent: "center",
       }}
+      keyboardShouldPersistTaps="handled"
     >
       <YStack gap="$5">
         <YStack
@@ -305,14 +297,37 @@ export const ReviewView = ({
           </XStack>
         </YStack>
 
-        <YStack gap="$2">
+        <YStack gap="$4">
           <YStack gap="$2">
             <InstrumentSelector value={instrument} onChange={setInstrument} />
+          </YStack>
+
+          <YStack gap="$2">
+            <Text color="$grayText" fontSize="$3" ml="$1">
+              Style Prompt
+            </Text>
+            <BottomSheetTextInput
+              value={textPrompt}
+              onChangeText={setTextPrompt}
+              maxLength={30}
+              placeholder={placeholderText}
+              placeholderTextColor={theme.grayText?.val || "#666"}
+              style={{
+                backgroundColor: theme.dark2?.val || "#1E1E1E",
+                color: theme.color?.val || "white",
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                fontSize: 16,
+                borderWidth: 1,
+                borderColor: theme.dark3?.val || "#333",
+              }}
+            />
           </YStack>
         </YStack>
 
         <Button
-          mt="$3"
+          mt="$1"
           size="$5"
           backgroundColor="$accent"
           onPress={onConvert}

@@ -78,6 +78,8 @@ export const RecordBottomSheet = forwardRef<
     setInstrument,
     setIsPlaying,
     instrument,
+    textPrompt,
+    setTextPrompt,
     isPlaying,
     onCloseSheet,
     durationMillis,
@@ -123,6 +125,8 @@ export const RecordBottomSheet = forwardRef<
             onConvert={onConvert}
             setInstrument={setInstrument}
             instrument={instrument}
+            textPrompt={textPrompt}
+            setTextPrompt={setTextPrompt}
             isPlaying={isPlaying}
             setIsPlaying={setIsPlaying}
             duration={tempDuration}
@@ -142,7 +146,15 @@ export const RecordBottomSheet = forwardRef<
           />
         );
     }
-  }, [step, control, durationMillis, tempDuration, isPlaying, instrument]);
+  }, [
+    step,
+    control,
+    durationMillis,
+    tempDuration,
+    isPlaying,
+    instrument,
+    textPrompt,
+  ]);
 
   return (
     <BottomSheet
@@ -155,6 +167,7 @@ export const RecordBottomSheet = forwardRef<
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: theme.dark2?.val || "#1E1E1E" }}
       onClose={onCloseSheet}
+      keyboardBehavior="interactive" // Ensure keyboard interaction works smoothly
     >
       <YStack flex={1} paddingBottom={insets.bottom + 20}>
         {CurrentView}
