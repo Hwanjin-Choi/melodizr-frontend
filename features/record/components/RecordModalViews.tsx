@@ -246,11 +246,11 @@ export const ReviewView = ({
   //TODO replace something for default prompt, left something for now
   const placeholderText = useMemo(() => {
     if (instrument.includes("piano") || instrument.includes("organ")) {
-      return 'Try "wet" or "church"';
+      return 'Try e.g. "wet" or "church"';
     } else if (instrument.includes("guitar") || instrument.includes("bass")) {
-      return 'Try "metal" or "jazz"';
+      return 'Try e.g. "metal" or "jazz"';
     }
-    return "Try something";
+    return "Try e.g. something";
   }, [instrument]);
 
   return (
