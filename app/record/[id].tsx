@@ -12,6 +12,7 @@ import {
 } from "@/features/record/components/RecordBottomSheet";
 import { ProjectPlayer } from "@/features/record/components/ProjectPlayer";
 import { VoiceList } from "@/features/record/components/VoiceList";
+import { ProjectSetupSheet } from "@/features/record/components/ProjectSetupSheet";
 
 import { ProjectService, Project } from "@/services/ProjectService";
 import { VoiceLibraryService, VoiceItem } from "@/services/VoiceLibraryService";
@@ -27,6 +28,8 @@ export default function RecordProjectPage() {
 
   const [isProjectTab, setIsProjectTab] = useState(true);
   const [voiceLibrary, setVoiceLibrary] = useState<VoiceItem[]>([]);
+
+  const [showSetupSheet, setShowSetupSheet] = useState(false);
 
   const handleTitleChange = async (newTitle: string) => {
     if (!project) return;
@@ -47,7 +50,7 @@ export default function RecordProjectPage() {
       console.error("Failed to load voices", e);
     }
   };
-
+  /* 
   useEffect(() => {
     async function init() {
       loadVoices();
@@ -73,9 +76,48 @@ export default function RecordProjectPage() {
           setIsNewProject(false);
         }
       }
+
+      if (id === "new" || (project && project.tracks.length === 0)) {
+        setTimeout(() => setShowSetupSheet(true), 500);
+      }
+    }
+    init();
+  }, [id, project]); */
+
+  useEffect(() => {
+    async function init() {
+      await loadVoices();
+
+      if (id === "new") {
+        setProject({
+          id: "temp",
+          title: "새 프로젝트",
+          tracks: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        setIsNewProject(true);
+      } else if (id && typeof id === "string") {
+        const loaded = await ProjectService.getProject(id);
+        if (loaded) {
+          setProject(loaded);
+          setIsNewProject(false);
+        }
+      }
     }
     init();
   }, [id]);
+
+  useEffect(() => {
+    if (!project) return;
+
+    if (project.tracks.length === 0) {
+      const timer = setTimeout(() => {
+        setShowSetupSheet((prev) => (!prev ? true : prev));
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [project]);
 
   const handleConversionComplete = async (
     originalVoice: VoiceItem,
@@ -103,6 +145,37 @@ export default function RecordProjectPage() {
 
     setIsProjectTab(true);
     bottomSheetRef.current?.close();
+  };
+
+  const handleSetupComplete = async (baseTrack: Track) => {
+    setShowSetupSheet(false);
+
+    try {
+      let updatedProject: Project;
+
+      if (isNewProject) {
+        updatedProject = await ProjectService.createProject(baseTrack);
+
+        router.replace(`/record/${updatedProject.id}`);
+
+        setIsNewProject(false);
+      } else {
+        if (!project) return;
+
+        updatedProject = {
+          ...project,
+          tracks: [baseTrack, ...project.tracks],
+          updatedAt: Date.now(),
+        };
+
+        await ProjectService.updateProject(updatedProject);
+      }
+
+      setProject(updatedProject);
+      setIsProjectTab(true);
+    } catch (e) {
+      console.error("Failed to setup project", e);
+    }
   };
 
   const handleDeleteTrack = async (trackId: string) => {
@@ -200,6 +273,11 @@ export default function RecordProjectPage() {
       <RecordBottomSheet
         ref={bottomSheetRef}
         onConversionComplete={handleConversionComplete}
+      />
+
+      <ProjectSetupSheet
+        open={showSetupSheet}
+        onComplete={handleSetupComplete}
       />
     </YStack>
   );

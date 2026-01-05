@@ -1,5 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+export interface PlaybackSettings {
+  type: "preset";
+  originalBpm: number;
+  targetBpm: number;
+  targetBars: number;
+  rate: number;
+  loopCount: number;
+}
+
 export interface TrackItem {
   id: string;
   title: string;
@@ -7,16 +16,25 @@ export interface TrackItem {
   uri?: string;
   originalVoiceId?: string;
   createdAt: number;
+  playbackSettings?: PlaybackSettings;
+}
+
+export interface PresetSample {
+  id: string;
+  title: string;
+  uri: any;
+  originalBpm: number;
+  originalBars: number; //to check original bar count
 }
 
 const TRACK_STORAGE_KEY = "@melodizr_tracks";
 
 export const TrackLibraryService = {
-  // 트랙 저장
+  // save track
   saveTrack: async (track: TrackItem): Promise<TrackItem[]> => {
     try {
       const currentList = await TrackLibraryService.getTracks();
-      const newList = [track, ...currentList]; // 최신순 정렬
+      const newList = [track, ...currentList];
       await AsyncStorage.setItem(TRACK_STORAGE_KEY, JSON.stringify(newList));
       return newList;
     } catch (e) {
@@ -25,7 +43,7 @@ export const TrackLibraryService = {
     }
   },
 
-  // 트랙 목록 불러오기
+  // loading tracks
   getTracks: async (): Promise<TrackItem[]> => {
     try {
       const jsonValue = await AsyncStorage.getItem(TRACK_STORAGE_KEY);
@@ -36,7 +54,7 @@ export const TrackLibraryService = {
     }
   },
 
-  // 트랙 삭제 (필요시 사용)
+  // track delete
   deleteTrack: async (id: string): Promise<TrackItem[]> => {
     try {
       const currentList = await TrackLibraryService.getTracks();
