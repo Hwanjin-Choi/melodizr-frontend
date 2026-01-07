@@ -88,6 +88,8 @@ export const useRecordControl = (
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
       });
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
@@ -112,8 +114,10 @@ export const useRecordControl = (
   const prepareForPlayback = async () => {
     try {
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
+        allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
       });
     } catch (e) {
       console.error("Audio mode setup failed", e);
@@ -161,8 +165,10 @@ export const useRecordControl = (
       const asset = result.assets[0];
 
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
+        allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
       });
 
       const { sound } = await Audio.Sound.createAsync(

@@ -6,14 +6,21 @@ const METRONOME_SOUND_URI = require("@/assets/metronome/metronome_tick.mp3");
 export const useMetronome = (bpm: number) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isTicking, setIsTicking] = useState(false);
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const visualTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const loadSound = async () => {
-      const { sound } = await Audio.Sound.createAsync(METRONOME_SOUND_URI, {
-        shouldPlay: false,
-      });
-      setSound(sound);
+      try {
+        const { sound } = await Audio.Sound.createAsync(METRONOME_SOUND_URI, {
+          shouldPlay: false,
+        });
+        setSound(sound);
+      } catch (e) {
+        console.error("Metronome load failed", e);
+      }
     };
     loadSound();
     return () => {
@@ -21,33 +28,53 @@ export const useMetronome = (bpm: number) => {
     };
   }, []);
 
+  const playTick = useCallback(async () => {
+    try {
+      await sound?.replayAsync();
+    } catch (e) {}
+
+    setIsTicking(true);
+    if (visualTimeoutRef.current) clearTimeout(visualTimeoutRef.current);
+    visualTimeoutRef.current = setTimeout(() => {
+      setIsTicking(false);
+    }, 150);
+  }, [sound]);
+
   const toggleMetronome = useCallback(async () => {
     if (isPlaying) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      // [STOP]
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       setIsPlaying(false);
+      setIsTicking(false);
     } else {
+      // [START]
       if (!sound) return;
+
       setIsPlaying(true);
       const intervalMs = (60 / bpm) * 1000;
 
-      await sound.replayAsync();
-      intervalRef.current = setInterval(async () => {
-        await sound.replayAsync();
+      playTick();
+
+      intervalRef.current = setInterval(() => {
+        playTick();
       }, intervalMs);
     }
-  }, [bpm, isPlaying, sound]);
+  }, [bpm, isPlaying, sound, playTick]);
 
   useEffect(() => {
     if (isPlaying) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       const intervalMs = (60 / bpm) * 1000;
-      intervalRef.current = setInterval(async () => {
-        await sound?.replayAsync();
+      intervalRef.current = setInterval(() => {
+        playTick();
       }, intervalMs);
     }
   }, [bpm]);
 
-  return { isMetronomePlaying: isPlaying, toggleMetronome };
+  return { isMetronomePlaying: isPlaying, toggleMetronome, isTicking };
 };
 
 export const calculatePresetParams = (

@@ -71,7 +71,8 @@ export const ProjectSetupSheet = ({
   const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
-  const { isMetronomePlaying, toggleMetronome } = useMetronome(targetBpm);
+  const { isMetronomePlaying, toggleMetronome, isTicking } =
+    useMetronome(targetBpm);
 
   useEffect(() => {
     if (!open) stopAllAudio();
@@ -294,14 +295,21 @@ export const ProjectSetupSheet = ({
           <YStack flex={1} gap="$5">
             {renderHeader("Record Beatbox")}
 
-            <YStack bg="$surface" p="$5" br="$6" gap="$4">
-              <YStack gap="$2">
+            <YStack
+              bg="$surface"
+              p="$6"
+              br="$6"
+              gap="$5"
+              borderColor={isTicking ? "$accent" : "transparent"}
+              borderWidth={5}
+            >
+              <YStack gap="$3">
                 <XStack jc="space-between" ai="center">
                   <Text fontSize="$4" color="$textSecondary" fontWeight="600">
                     Tempo
                   </Text>
                   <Text
-                    fontSize="$5"
+                    fontSize="$6"
                     color="$accent"
                     fontWeight="800"
                     fontVariant={["tabular-nums"]}
@@ -319,34 +327,36 @@ export const ProjectSetupSheet = ({
                   step={1}
                   onValueChange={(val) => setTargetBpm(val[0])}
                 >
-                  <Slider.Track bg="$border" height={6}>
+                  <Slider.Track bg="$border" height={8}>
                     <Slider.TrackActive bg="$accent" />
                   </Slider.Track>
                   <Slider.Thumb
                     index={0}
                     circular
-                    size="$2"
+                    size="$3"
                     bg="$light1"
                     elevation="$2"
                   />
                 </Slider>
               </YStack>
               <Separator borderColor="$border" />
+
               <Button
                 bg={isMetronomePlaying ? "$accent" : "$border"}
                 pressStyle={{ opacity: 0.9 }}
                 onPress={toggleMetronome}
                 icon={
                   isMetronomePlaying ? (
-                    <Square size={18} color="white" />
+                    <Square size={20} color="white" />
                   ) : (
-                    <Play size={18} color="white" />
+                    <Play size={20} color="white" />
                   )
                 }
                 br="$10"
-                px="$4"
+                h="$5"
+                px="$5"
               >
-                <Text color="white" fontWeight="600">
+                <Text color="white" fontWeight="700" fontSize="$4">
                   {isMetronomePlaying ? "Stop Metronome" : "Start Metronome"}
                 </Text>
               </Button>
@@ -378,7 +388,7 @@ export const ProjectSetupSheet = ({
               icon={<Check color="white" />}
             >
               <Text color="white" fontWeight="bold">
-                Use this Beat
+                Convert
               </Text>
             </Button>
           </YStack>
