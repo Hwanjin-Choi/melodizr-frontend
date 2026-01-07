@@ -4,7 +4,7 @@ import {
   Play,
   Upload,
   RefreshCcw,
-  Trash2,
+  Check,
 } from "@tamagui/lucide-icons";
 import React, { useEffect, useState, useMemo } from "react";
 import Animated, {
@@ -26,13 +26,12 @@ import {
   Stack,
   useTheme,
 } from "tamagui";
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet"; // Import BottomSheetTextInput
-import { RecordControl } from "../hooks/useRecordControl";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
+import { RecordControl, MODE_OPTIONS } from "../hooks/useRecordControl";
 import { Audio } from "expo-av";
-import { InstrumentSelector } from "./InstrumentSelector";
 
 // ------------------------------------
-// Step 1: Idle View
+// Step 0: Idle View
 // ------------------------------------
 export const IdleView = ({
   onOpenSheet,
@@ -43,7 +42,7 @@ export const IdleView = ({
 }) => (
   <YStack flex={1} ai="center" jc="center" gap="$6" px="$6">
     <Text color="white" fontSize="$5" fontWeight="bold">
-      00:00
+      Ready?
     </Text>
 
     <Circle
@@ -87,6 +86,20 @@ export const IdleView = ({
 );
 
 // ------------------------------------
+// Step 1: Counting View
+// ------------------------------------
+export const CountingView = ({ count }: { count: number }) => (
+  <YStack flex={1} ai="center" jc="center" gap="$6">
+    <Text color="$accent" fontSize={80} fontWeight="900" animation="quick">
+      {count}
+    </Text>
+    <Text color="$grayText" fontSize="$5">
+      Get Ready...
+    </Text>
+  </YStack>
+);
+
+// ------------------------------------
 // Step 2: Recording View
 // ------------------------------------
 const formatDuration = (millis: number) => {
@@ -105,62 +118,82 @@ export const RecordingWaveform = () => (
     ))}
   </XStack>
 );
+
 export const RecordingView = ({
   onStopRecording,
   durationMillis = 0,
-}: Pick<RecordControl, "onStopRecording"> & { durationMillis?: number }) => (
-  <YStack flex={1} ai="center" jc="center" px="$6" gap="$5">
-    <Text color="white" fontSize="$5" fontWeight="bold">
-      {formatDuration(durationMillis)}
-    </Text>
+  maxDuration = 0,
+}: Pick<RecordControl, "onStopRecording"> & {
+  durationMillis?: number;
+  maxDuration?: number;
+}) => {
+  const timeLeft = Math.max(0, maxDuration - durationMillis);
 
-    <YStack
-      width="100%"
-      bg="$dark1"
-      borderRadius="$6"
-      borderWidth={1}
-      borderColor="$textSecondary"
-      ai="center"
-      jc="center"
-      py="$8"
-    >
-      <RecordingWaveform />
-    </YStack>
-
-    <YStack ai="center" gap="$4">
-      <Circle
-        onPress={onStopRecording}
-        size={84}
-        borderWidth={4}
-        borderColor="$melodizrOrange"
-        p={4}
-        pressStyle={{ opacity: 0.8, scale: 0.95 }}
-      >
-        <Button
-          circular
-          bg="$melodizrOrange"
-          unstyled
-          ai="center"
-          jc="center"
-          pointerEvents="none"
-        >
-          <Stack width={24} height={24} bg="red" borderRadius={4} />
-        </Button>
-      </Circle>
-      <Text color="$grayText" fontSize="$3">
-        Recording... Tap to stop
+  return (
+    <YStack flex={1} ai="center" jc="center" px="$6" gap="$5">
+      <Text color="$melodizrOrange" fontSize="$6" fontWeight="bold">
+        {formatDuration(timeLeft)} left
       </Text>
+
+      <YStack
+        width="100%"
+        bg="$dark1"
+        borderRadius="$6"
+        borderWidth={1}
+        borderColor="$textSecondary"
+        ai="center"
+        jc="center"
+        py="$8"
+        position="relative"
+        overflow="hidden"
+      >
+        <View
+          position="absolute"
+          left={0}
+          top={0}
+          bottom={0}
+          bg="$dark2"
+          width={`${(durationMillis / maxDuration) * 100}%`}
+          opacity={0.3}
+        />
+        <RecordingWaveform />
+      </YStack>
+
+      <YStack ai="center" gap="$4">
+        <Circle
+          onPress={onStopRecording}
+          size={84}
+          borderWidth={4}
+          borderColor="$melodizrOrange"
+          p={4}
+          pressStyle={{ opacity: 0.8, scale: 0.95 }}
+        >
+          <Button
+            circular
+            bg="$melodizrOrange"
+            unstyled
+            ai="center"
+            jc="center"
+            pointerEvents="none"
+          >
+            <Stack width={24} height={24} bg="red" borderRadius={4} />
+          </Button>
+        </Circle>
+        <Text color="$grayText" fontSize="$3">
+          Recording... Tap to stop
+        </Text>
+      </YStack>
     </YStack>
-  </YStack>
-);
+  );
+};
 
 // ------------------------------------
-// Step 3: Review View
+// Step 3: Review View (Updated)
 // ------------------------------------
 export const ReviewView = ({
   onConvert,
-  setInstrument,
-  instrument,
+  setMode,
+  mode,
   textPrompt,
   setTextPrompt,
   isPlaying,
@@ -171,8 +204,8 @@ export const ReviewView = ({
 }: Pick<
   RecordControl,
   | "onConvert"
-  | "setInstrument"
-  | "instrument"
+  | "setMode"
+  | "mode"
   | "isPlaying"
   | "setIsPlaying"
   | "onRetake"
@@ -191,7 +224,6 @@ export const ReviewView = ({
   }, [sound]);
 
   const handleTogglePlay = async () => {
-    console.log(uri);
     if (!uri) return;
     try {
       await Audio.setAudioModeAsync({
@@ -199,7 +231,6 @@ export const ReviewView = ({
         playsInSilentModeIOS: true,
       });
       if (sound) {
-        console.log("check");
         const status = await sound.getStatusAsync();
         if (status.isLoaded) {
           if (status.isPlaying) {
@@ -215,8 +246,6 @@ export const ReviewView = ({
           }
         }
       } else {
-        console.log("check2");
-
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri },
           { shouldPlay: true }
@@ -234,25 +263,6 @@ export const ReviewView = ({
     }
   };
 
-  const formatDuration = (millis: number) => {
-    const totalSeconds = Math.floor(millis / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, "0")}:${seconds
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
-  //TODO replace something for default prompt, left something for now
-  const placeholderText = useMemo(() => {
-    if (instrument.includes("piano") || instrument.includes("organ")) {
-      return 'Try e.g. "wet" or "church"';
-    } else if (instrument.includes("guitar") || instrument.includes("bass")) {
-      return 'Try e.g. "metal" or "jazz"';
-    }
-    return "Try e.g. something";
-  }, [instrument]);
-
   return (
     <ScrollView
       flex={1}
@@ -264,6 +274,7 @@ export const ReviewView = ({
       keyboardShouldPersistTaps="handled"
     >
       <YStack gap="$5">
+        {/* Playback Control */}
         <YStack
           bg="$dark1"
           p="$4"
@@ -297,37 +308,65 @@ export const ReviewView = ({
           </XStack>
         </YStack>
 
-        <YStack gap="$4">
-          <YStack gap="$2">
-            <InstrumentSelector value={instrument} onChange={setInstrument} />
-          </YStack>
-
-          <YStack gap="$2">
-            <Text color="$grayText" fontSize="$3" ml="$1">
-              Style Prompt
-            </Text>
-            <BottomSheetTextInput
-              value={textPrompt}
-              onChangeText={setTextPrompt}
-              maxLength={30}
-              placeholder={placeholderText}
-              placeholderTextColor={theme.grayText?.val || "#666"}
-              style={{
-                backgroundColor: theme.dark2?.val || "#1E1E1E",
-                color: theme.color?.val || "white",
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-                fontSize: 16,
-                borderWidth: 1,
-                borderColor: theme.dark3?.val || "#333",
-              }}
-            />
-          </YStack>
+        {/* Mode Selector */}
+        <YStack gap="$3">
+          <Text color="$grayText" fontSize="$3" ml="$1" fontWeight="bold">
+            Select Mode
+          </Text>
+          <XStack gap="$3">
+            {MODE_OPTIONS.map((option) => {
+              const isSelected = mode === option.value;
+              return (
+                <Button
+                  key={option.value}
+                  flex={1}
+                  size="$4"
+                  bg={isSelected ? "$accent" : "$dark2"}
+                  borderColor={isSelected ? "$accent" : "$dark3"}
+                  borderWidth={1}
+                  onPress={() => setMode(option.value)}
+                  pressStyle={{ opacity: 0.9 }}
+                >
+                  <Text
+                    color={isSelected ? "white" : "$grayText"}
+                    fontWeight={isSelected ? "bold" : "normal"}
+                  >
+                    {option.label}
+                  </Text>
+                  {isSelected && <Check size={16} color="white" />}
+                </Button>
+              );
+            })}
+          </XStack>
         </YStack>
 
+        {/* Text Prompt Input */}
+        <YStack gap="$2">
+          <Text color="$grayText" fontSize="$3" ml="$1" fontWeight="bold">
+            Describe Style
+          </Text>
+          <BottomSheetTextInput
+            value={textPrompt}
+            onChangeText={setTextPrompt}
+            maxLength={100}
+            placeholder="E.g., fast rock guitar, jazzy piano..."
+            placeholderTextColor={theme.grayText?.val || "#666"}
+            style={{
+              backgroundColor: theme.dark2?.val || "#1E1E1E",
+              color: theme.color?.val || "white",
+              borderRadius: 8,
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              fontSize: 16,
+              borderWidth: 1,
+              borderColor: theme.dark3?.val || "#333",
+            }}
+          />
+        </YStack>
+
+        {/* Action Buttons */}
         <Button
-          mt="$1"
+          mt="$4"
           size="$5"
           backgroundColor="$accent"
           onPress={onConvert}
@@ -362,19 +401,16 @@ export const ConvertingView = () => (
     <Spinner size="large" color="$accent" />
     <YStack ai="center" gap="$2">
       <Text color="white" fontSize="$6" fontWeight="bold">
-        Converting...
+        Processing...
       </Text>
       <Text color="$grayText" textAlign="center">
-        Creating your instrument track.{"\n"}
-        You can safely close this screen.
+        Generating your track based on settings.{"\n"}
+        This may take a moment.
       </Text>
     </YStack>
   </YStack>
 );
 
-// ------------------------------------
-// Helper component: AnimatedBar (for RecordingWaveform)
-// ------------------------------------
 const AnimatedBar = ({ delay }: { delay: number }) => {
   const height = useSharedValue(10);
   useEffect(() => {

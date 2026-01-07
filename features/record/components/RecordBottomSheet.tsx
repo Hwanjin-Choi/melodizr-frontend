@@ -2,14 +2,13 @@ import React, {
   forwardRef,
   useCallback,
   useMemo,
-  useRef,
   useImperativeHandle,
 } from "react";
 import BottomSheet, {
   BottomSheetView,
   BottomSheetBackdrop,
 } from "@gorhom/bottom-sheet";
-import { Button, Text, YStack, H3, useTheme, View } from "tamagui";
+import { YStack, useTheme, View } from "tamagui";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useRecordControl } from "../hooks/useRecordControl";
@@ -18,6 +17,7 @@ import {
   IdleView,
   RecordingView,
   ReviewView,
+  CountingView,
 } from "./RecordModalViews";
 import { VoiceItem } from "@/services/VoiceLibraryService";
 
@@ -29,6 +29,8 @@ export interface RecordBottomSheetHandle {
 
 interface RecordBottomSheetProps {
   onConversionComplete?: (voice: any, track: any) => void;
+  bpm?: number;
+  bars?: number;
 }
 
 const CustomHandle = () => {
@@ -63,21 +65,23 @@ export const RecordBottomSheet = forwardRef<
 >((props, ref) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-
   const bottomSheetRef = React.useRef<BottomSheet>(null);
 
   const control = useRecordControl(ref as React.RefObject<BottomSheet>, {
     onConversionComplete: props.onConversionComplete,
+    bpm: props.bpm,
+    bars: props.bars,
   });
+
   const {
     step,
     snapPoints,
     onStartRecording,
     onStopRecording,
     onConvert,
-    setInstrument,
+    setMode,
+    mode,
     setIsPlaying,
-    instrument,
     textPrompt,
     setTextPrompt,
     isPlaying,
@@ -88,6 +92,8 @@ export const RecordBottomSheet = forwardRef<
     onUploadFile,
     startFromExistingVoice,
     onRetake,
+    countdownValue,
+    maxDuration,
   } = control;
 
   useImperativeHandle(ref, () => ({
@@ -112,19 +118,22 @@ export const RecordBottomSheet = forwardRef<
 
   const CurrentView = useMemo(() => {
     switch (step) {
+      case "counting":
+        return <CountingView count={countdownValue} />;
       case "recording":
         return (
           <RecordingView
             onStopRecording={onStopRecording}
             durationMillis={durationMillis}
+            maxDuration={maxDuration}
           />
         );
       case "review":
         return (
           <ReviewView
             onConvert={onConvert}
-            setInstrument={setInstrument}
-            instrument={instrument}
+            setMode={setMode}
+            mode={mode}
             textPrompt={textPrompt}
             setTextPrompt={setTextPrompt}
             isPlaying={isPlaying}
@@ -152,8 +161,10 @@ export const RecordBottomSheet = forwardRef<
     durationMillis,
     tempDuration,
     isPlaying,
-    instrument,
+    mode,
     textPrompt,
+    countdownValue,
+    maxDuration,
   ]);
 
   return (
@@ -167,7 +178,7 @@ export const RecordBottomSheet = forwardRef<
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: theme.dark2?.val || "#1E1E1E" }}
       onClose={onCloseSheet}
-      keyboardBehavior="interactive" // Ensure keyboard interaction works smoothly
+      keyboardBehavior="interactive"
     >
       <YStack flex={1} paddingBottom={insets.bottom + 20}>
         {CurrentView}
