@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Sheet, YStack, XStack, Text, Button } from "tamagui";
-import { Mic, Music } from "@tamagui/lucide-icons";
+import { Mic, Music, X } from "@tamagui/lucide-icons";
 import { TrackItem } from "@/services/TrackLibraryService";
 
 import { BeatboxSetup } from "./BeatboxSetup";
@@ -10,12 +10,18 @@ interface ProjectSetupSheetProps {
   open: boolean;
   onComplete: (track: TrackItem) => void;
   onOpenChange?: (open: boolean) => void;
+  fixedBpm?: number;
+  fixedBars?: number;
+  onCancel?: () => void;
 }
 
 export const ProjectSetupSheet = ({
   open,
   onComplete,
   onOpenChange,
+  fixedBars,
+  fixedBpm,
+  onCancel,
 }: ProjectSetupSheetProps) => {
   const [position, setPosition] = useState(0);
   const [mode, setMode] = useState<"select" | "beatbox" | "preset">("select");
@@ -30,6 +36,14 @@ export const ProjectSetupSheet = ({
     onComplete(track);
   };
 
+  const handleClose = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      onOpenChange?.(false);
+    }
+  };
+
   return (
     <Sheet
       forceRemoveScrollEnabled={open}
@@ -41,6 +55,7 @@ export const ProjectSetupSheet = ({
       onPositionChange={setPosition}
       dismissOnSnapToBottom={false}
       animation="medium"
+      dismissOnOverlayPress={false}
     >
       <Sheet.Overlay
         animation="lazy"
@@ -58,13 +73,30 @@ export const ProjectSetupSheet = ({
         {/* --- 1. Selection Mode --- */}
         {mode === "select" && (
           <YStack flex={1} gap="$6" ai="center" jc="center" pb="$10">
+            <Button
+              position="absolute"
+              top={0}
+              right={0}
+              size="$3"
+              circular
+              chromeless
+              icon={X}
+              onPress={handleClose}
+              zIndex={10}
+            />
+
             <YStack ai="center" gap="$2">
               <Text fontSize="$6" fontWeight="800" color="$textPrimary">
-                Start Project
+                Add New Layer
               </Text>
               <Text fontSize="$4" color="$textSecondary" textAlign="center">
-                How would you like to start your beat?
+                Select a source for your new track
               </Text>
+              {fixedBpm && fixedBars && (
+                <Text fontSize="$3" color="$accent" mt="$2">
+                  Selected {fixedBpm} BPM / {fixedBars} Bars
+                </Text>
+              )}
             </YStack>
 
             <XStack gap="$4" width="100%" jc="center">
@@ -130,6 +162,8 @@ export const ProjectSetupSheet = ({
           <BeatboxSetup
             onBack={() => setMode("select")}
             onComplete={handleComplete}
+            fixedBpm={fixedBpm}
+            fixedBars={fixedBars}
           />
         )}
 
@@ -138,6 +172,8 @@ export const ProjectSetupSheet = ({
           <PresetSetup
             onBack={() => setMode("select")}
             onComplete={handleComplete}
+            fixedBpm={fixedBpm}
+            fixedBars={fixedBars}
           />
         )}
       </Sheet.Frame>

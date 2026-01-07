@@ -12,7 +12,7 @@ import {
   Pencil,
   Check,
 } from "@tamagui/lucide-icons";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Audio } from "expo-av";
 import * as Sharing from "expo-sharing";
 import {
@@ -28,12 +28,23 @@ import {
 } from "tamagui";
 import { getSmartUri } from "@/utils/pathUtils";
 
+interface PlaybackSettings {
+  type: "preset";
+  originalBpm: number;
+  targetBpm: number;
+  targetBars: number;
+  rate: number;
+  loopCount: number;
+}
+
 export interface Track {
   id: string;
   title: string;
   duration: string;
-  uri?: string;
+  uri?: string | number;
   isMuted?: boolean;
+  durationMillis?: number;
+  playbackSettings?: PlaybackSettings;
 }
 
 interface TrackListProps {
@@ -52,50 +63,106 @@ export const TrackList = ({
   onRenameTrack,
 }: TrackListProps) => {
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
-
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
+  const playTimeout = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     return () => {
-      if (sound) sound.unloadAsync();
+      cleanupSound();
     };
-  }, [sound]);
+  }, []);
+
+  const cleanupSound = async () => {
+    if (playTimeout.current) {
+      clearTimeout(playTimeout.current);
+      playTimeout.current = null;
+    }
+    // 즉시 UI 상태를 초기화하여 딜레이 방지
+    setPlayingId(null);
+
+    if (sound) {
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      } catch (e) {
+        // ignore error
+      }
+      setSound(null);
+    }
+  };
 
   const handlePlay = async (track: Track) => {
     const playableUri = getSmartUri(track.uri);
     if (!playableUri) return;
 
     try {
-      if (sound) {
-        await sound.unloadAsync();
-        setSound(null);
-      }
-
+      // 1. 같은 트랙을 누른 경우 (일시정지)
       if (playingId === track.id) {
-        setPlayingId(null);
+        // cleanupSound가 UI 업데이트와 정리를 모두 수행
+        await cleanupSound();
         return;
       }
 
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: playableUri },
-        { shouldPlay: true }
-      );
+      // 2. 다른 트랙을 누른 경우 (기존 트랙 정지)
+      if (sound) {
+        await cleanupSound();
+      }
 
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setPlayingId(null);
-          newSound.unloadAsync();
-          setSound(null);
-        }
+      const source =
+        typeof playableUri === "number" ? playableUri : { uri: playableUri };
+
+      const isPreset = track.playbackSettings?.type === "preset";
+
+      const { sound: newSound } = await Audio.Sound.createAsync(source, {
+        shouldPlay: true,
+        isLooping: isPreset,
       });
+
+      if (track.playbackSettings?.rate) {
+        await newSound.setRateAsync(track.playbackSettings.rate, true);
+      }
 
       setSound(newSound);
       setPlayingId(track.id);
+
+      // 3. 재생 종료 로직 설정
+      if (isPreset && track.durationMillis) {
+        // [수정] 프리셋 종료 타이머
+        playTimeout.current = setTimeout(async () => {
+          // [핵심] UI 먼저 업데이트! (딜레이 제거)
+          setPlayingId(null);
+
+          try {
+            await newSound.stopAsync();
+            await newSound.unloadAsync();
+          } catch (e) {
+            console.error("Error unloading preset sound", e);
+          }
+          setSound(null);
+        }, track.durationMillis);
+      } else {
+        // [수정] 일반 트랙 종료 리스너
+        newSound.setOnPlaybackStatusUpdate(async (status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            // [핵심] UI 먼저 업데이트!
+            setPlayingId(null);
+
+            try {
+              await newSound.unloadAsync();
+            } catch (e) {
+              console.error("Error unloading sound", e);
+            }
+            setSound(null);
+          }
+        });
+      }
     } catch (error) {
       console.error("Track playback failed", error);
+      cleanupSound();
     }
   };
 
@@ -112,18 +179,19 @@ export const TrackList = ({
       alert("Sharing is not available on this device");
       return;
     }
-
     const uri = getSmartUri(track.uri);
-    if (!uri) {
-      console.error("No URI found for track");
+    if (!uri) return;
+
+    if (typeof uri === "number") {
+      alert("Preset tracks cannot be shared directly yet.");
       return;
     }
 
     try {
       await Sharing.shareAsync(uri, {
-        dialogTitle: `Share ${track.title}`, // Android 전용 타이틀
-        mimeType: "audio/x-m4a", // 오디오 파일 타입 지정 (필요 시 수정)
-        UTI: "public.audio", // iOS 전용 타입 지정
+        dialogTitle: `Share ${track.title}`,
+        mimeType: "audio/x-m4a",
+        UTI: "public.audio",
       });
     } catch (error) {
       console.error("Error sharing track:", error);

@@ -13,7 +13,7 @@ export interface TrackItem {
   id: string;
   title: string;
   duration: string;
-  uri?: string;
+  uri?: string | number;
   originalVoiceId?: string;
   createdAt: number;
   playbackSettings?: PlaybackSettings;
@@ -22,9 +22,9 @@ export interface TrackItem {
 export interface PresetSample {
   id: string;
   title: string;
-  uri: any;
+  uri: number | string;
   originalBpm: number;
-  originalBars: number; //to check original bar count
+  originalBars: number;
 }
 
 const TRACK_STORAGE_KEY = "@melodizr_tracks";

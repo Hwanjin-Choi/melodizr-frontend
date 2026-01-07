@@ -1,8 +1,8 @@
 import React, { useCallback, useRef, useState, useEffect } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { YStack, Spinner } from "tamagui";
+import { YStack, Spinner, Button, XStack, Text } from "tamagui";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import { Plus, Music } from "@tamagui/lucide-icons";
 import { RecordHeader } from "@/features/record/components/RecordHeader";
 import { TrackList, type Track } from "@/features/record/components/TrackList";
 import { RecordBottomBar } from "@/features/record/components/RecordBottomBarProps";
@@ -50,6 +50,24 @@ export default function RecordProjectPage() {
       console.error("Failed to load voices", e);
     }
   };
+
+  const handleSheetCancel = async () => {
+    if (!project) return;
+
+    if (project.tracks.length === 0) {
+      try {
+        console.log("Deleting empty project...");
+        await ProjectService.deleteProject(project.id);
+        router.back();
+      } catch (error) {
+        console.error("Failed to delete empty project", error);
+        router.back();
+      }
+    } else {
+      setShowSetupSheet(false);
+    }
+  };
+
   /* 
   useEffect(() => {
     async function init() {
@@ -234,13 +252,37 @@ export default function RecordProjectPage() {
       {isProjectTab ? (
         <YStack flex={1}>
           {project.tracks.length > 0 && (
-            <YStack px="$4" pb="$4">
-              <ProjectPlayer
-                layers={activeTracks}
-                title={project.title}
-                onTitleChange={handleTitleChange}
-              />
-            </YStack>
+            <>
+              <XStack px="$4" pt="$4" ai="center" jc="space-between">
+                {project.bpm && project.bars ? (
+                  <XStack ai="center" gap="$2" opacity={0.8}>
+                    <Music size={16} color="$accent" />
+                    <Text fontSize="$4" color="$textSecondary" fontWeight="600">
+                      {project.bpm} BPM · {project.bars} Bars
+                    </Text>
+                  </XStack>
+                ) : (
+                  <YStack />
+                )}
+
+                <Button
+                  size="$3"
+                  icon={Plus}
+                  bg="$surface"
+                  color="$textPrimary"
+                  onPress={() => setShowSetupSheet(true)}
+                >
+                  Add Base
+                </Button>
+              </XStack>
+              <YStack px="$4" pb="$4">
+                <ProjectPlayer
+                  layers={activeTracks}
+                  title={project.title}
+                  onTitleChange={handleTitleChange}
+                />
+              </YStack>
+            </>
           )}
 
           <TrackList
@@ -278,6 +320,9 @@ export default function RecordProjectPage() {
       <ProjectSetupSheet
         open={showSetupSheet}
         onComplete={handleSetupComplete}
+        fixedBpm={project.bpm}
+        fixedBars={project.bars}
+        onCancel={handleSheetCancel}
       />
     </YStack>
   );

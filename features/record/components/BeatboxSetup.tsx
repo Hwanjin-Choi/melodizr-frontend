@@ -8,6 +8,7 @@ import {
   Sheet,
   View,
   styled,
+  ScrollView,
   Separator,
   Spinner,
 } from "tamagui";
@@ -84,14 +85,21 @@ type RecordingState = "idle" | "counting" | "recording" | "review";
 interface BeatboxSetupProps {
   onBack: () => void;
   onComplete: (track: TrackItem) => void;
+  fixedBpm?: number;
+  fixedBars?: number;
 }
 
-export const BeatboxSetup = ({ onBack, onComplete }: BeatboxSetupProps) => {
+export const BeatboxSetup = ({
+  onBack,
+  onComplete,
+  fixedBpm,
+  fixedBars,
+}: BeatboxSetupProps) => {
   const [step, setStep] = useState<Step>("config");
 
   // Settings
-  const [targetBpm, setTargetBpm] = useState(100);
-  const [targetBars, setTargetBars] = useState(4);
+  const [targetBpm, setTargetBpm] = useState(fixedBpm ?? 120);
+  const [targetBars, setTargetBars] = useState(fixedBars ?? 4);
   const [selectedTimbre, setSelectedTimbre] = useState(TIMBRE_COLLECTION[0]);
 
   // Timbre Preview State
@@ -119,6 +127,11 @@ export const BeatboxSetup = ({ onBack, onComplete }: BeatboxSetupProps) => {
       cleanupAllAudio();
     };
   }, []);
+
+  useEffect(() => {
+    if (fixedBpm) setTargetBpm(fixedBpm);
+    if (fixedBars) setTargetBars(fixedBars);
+  }, [fixedBpm, fixedBars]);
 
   const cleanupAllAudio = async () => {
     if (playbackSound) await playbackSound.unloadAsync();
@@ -327,7 +340,7 @@ export const BeatboxSetup = ({ onBack, onComplete }: BeatboxSetupProps) => {
         <>
           {renderHeader("Setup Beatbox")}
 
-          <Sheet.ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView showsVerticalScrollIndicator={false}>
             <YStack gap="$6">
               {/* BPM Slider */}
               <YStack gap="$3" bg="$surface" p="$4" br="$6">
@@ -344,7 +357,9 @@ export const BeatboxSetup = ({ onBack, onComplete }: BeatboxSetupProps) => {
                   min={60}
                   max={180}
                   step={1}
+                  disabled={fixedBpm ? true : false}
                   onValueChange={(v) => setTargetBpm(v[0])}
+                  opacity={fixedBpm ? 0.4 : 1}
                 >
                   <Slider.Track bg="$border" height={8}>
                     <Slider.TrackActive bg="$accent" />
@@ -371,6 +386,8 @@ export const BeatboxSetup = ({ onBack, onComplete }: BeatboxSetupProps) => {
                       bg={targetBars === bars ? "$accent" : "$border"}
                       onPress={() => setTargetBars(bars)}
                       pressStyle={{ opacity: 0.8 }}
+                      disabled={fixedBars ? true : false}
+                      opacity={fixedBars ? 0.4 : 1}
                     >
                       <Text
                         color={targetBars === bars ? "white" : "$textSecondary"}
@@ -422,7 +439,7 @@ export const BeatboxSetup = ({ onBack, onComplete }: BeatboxSetupProps) => {
                 </Button>
               </YStack>
             </YStack>
-          </Sheet.ScrollView>
+          </ScrollView>
 
           <Button
             size="$5"

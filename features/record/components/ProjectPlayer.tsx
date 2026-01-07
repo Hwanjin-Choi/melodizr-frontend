@@ -23,13 +23,6 @@ import { parseDurationToMillis, formatMillisToTime } from "@/utils/formatUtils";
 import { type Track } from "@/features/record/components/TrackList";
 import { getSmartUri } from "@/utils/pathUtils";
 
-/* interface Track {
-  id: string;
-  uri: string;
-  duration: string;
-  title: string;
-} */
-
 interface ProjectPlayerProps {
   layers: Track[];
   title: string;
@@ -78,10 +71,23 @@ export const ProjectPlayer = ({
             const playableUri = getSmartUri(layer.uri);
             if (!playableUri) return;
 
-            const { sound } = await Audio.Sound.createAsync(
-              { uri: playableUri },
-              { shouldPlay: false, positionMillis: 0 }
-            );
+            const source =
+              typeof playableUri === "number"
+                ? playableUri
+                : { uri: playableUri };
+
+            const isPreset = layer.playbackSettings?.type === "preset";
+
+            const { sound } = await Audio.Sound.createAsync(source, {
+              shouldPlay: false,
+              positionMillis: 0,
+              isLooping: isPreset,
+            });
+
+            if (layer.playbackSettings?.rate) {
+              await sound.setRateAsync(layer.playbackSettings.rate, true);
+            }
+
             loadedSounds.push(sound);
           })
         );
@@ -122,6 +128,7 @@ export const ProjectPlayer = ({
       await Promise.all(
         soundsRef.current.map(async (s) => {
           await s.stopAsync();
+          await s.setPositionAsync(0);
         })
       );
     } catch (e) {
@@ -133,13 +140,10 @@ export const ProjectPlayer = ({
     if (!isLoaded || soundsRef.current.length === 0) return;
 
     if (isPlaying) {
-      // [일시정지 로직]
       if (progressInterval.current) clearInterval(progressInterval.current);
       setIsPlaying(false);
       await Promise.all(soundsRef.current.map((s) => s.pauseAsync()));
     } else {
-      // [재생 시작 로직]
-
       if (position >= maxDuration) {
         setPosition(0);
         await Promise.all(soundsRef.current.map((s) => s.setPositionAsync(0)));

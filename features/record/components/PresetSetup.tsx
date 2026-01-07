@@ -96,21 +96,31 @@ const PRESET_SAMPLES: PresetSample[] = [
 interface PresetSetupProps {
   onBack: () => void;
   onComplete: (track: TrackItem) => void;
+  fixedBpm?: number;
+  fixedBars?: number;
 }
 
-export const PresetSetup = ({ onBack, onComplete }: PresetSetupProps) => {
+export const PresetSetup = ({
+  onBack,
+  onComplete,
+  fixedBars,
+  fixedBpm,
+}: PresetSetupProps) => {
   const [step, setStep] = useState<"list" | "config">("list");
   const [selectedPreset, setSelectedPreset] = useState<PresetSample | null>(
     null
   );
 
-  const [targetBpm, setTargetBpm] = useState(120);
-
-  // 마디 수 초기값 (4마디 기본)
-  const [targetBars, setTargetBars] = useState(4);
+  const [targetBpm, setTargetBpm] = useState(fixedBpm ?? 120);
+  const [targetBars, setTargetBars] = useState(fixedBars ?? 4);
 
   const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
+
+  useEffect(() => {
+    if (fixedBpm) setTargetBpm(fixedBpm);
+    if (fixedBars) setTargetBars(fixedBars);
+  }, [fixedBpm, fixedBars]);
 
   useEffect(() => {
     return () => {
@@ -270,91 +280,94 @@ export const PresetSetup = ({ onBack, onComplete }: PresetSetupProps) => {
 
       {/* Preset Config */}
       {step === "config" && selectedPreset && (
-        <YStack flex={1} gap="$5" justifyContent="space-between">
-          <YStack gap="$5" p="$5" bg="$surface" br="$5">
-            {/* BPM Slider */}
-            <YStack gap="$3">
-              <XStack jc="space-between" ai="flex-end">
-                <Text fontSize="$3" color="$textSecondary" fontWeight="600">
-                  Tempo
-                </Text>
-                <Text fontSize="$5" color="$accent" fontWeight="800">
-                  {targetBpm}{" "}
-                  <Text fontSize="$3" color="$grayText">
-                    BPM
+        <YStack flex={1} justifyContent="space-between">
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <YStack gap="$5">
+              {/* BPM Selector */}
+              <YStack gap="$3" bg="$surface" p="$4" br="$6">
+                <XStack jc="space-between" ai="center">
+                  <Text fontSize="$4" fontWeight="600" color="$textPrimary">
+                    Tempo (BPM)
                   </Text>
-                </Text>
-              </XStack>
-              <Slider
-                value={[targetBpm]}
-                min={60}
-                max={180}
-                step={1}
-                onValueChange={(v) => {
-                  setTargetBpm(v[0]);
-                  if (isPreviewing) togglePreview();
-                }}
-              >
-                <Slider.Track bg="$border" height={6}>
-                  <Slider.TrackActive bg="$accent" />
-                </Slider.Track>
-                <Slider.Thumb index={0} circular size="$2" bg="$light1" />
-              </Slider>
-            </YStack>
+                  <Text fontSize="$6" fontWeight="800" color="$accent">
+                    {targetBpm}
+                  </Text>
+                </XStack>
+                <Slider
+                  value={[targetBpm]}
+                  min={60}
+                  max={180}
+                  step={1}
+                  disabled={fixedBpm ? true : false}
+                  onValueChange={(v) => {
+                    if (!fixedBpm) setTargetBpm(v[0]);
+                  }}
+                  opacity={fixedBpm ? 0.4 : 1}
+                >
+                  <Slider.Track bg="$border" height={8}>
+                    <Slider.TrackActive bg="$accent" />
+                  </Slider.Track>
+                  <Slider.Thumb index={0} circular size="$3" bg="$light1" />
+                </Slider>
+              </YStack>
 
-            {/* Duration Buttons (Modified) */}
-            <YStack gap="$3">
-              <XStack jc="space-between" ai="flex-end">
-                <Text fontSize="$3" color="$textSecondary" fontWeight="600">
-                  Duration
-                </Text>
-              </XStack>
-
-              <XStack gap="$3">
-                {[4, 8].map((bars) => {
-                  const isActive = targetBars === bars;
-                  return (
+              {/* Bars Selector */}
+              <YStack gap="$3" bg="$surface" p="$4" br="$6">
+                <XStack jc="space-between" ai="center">
+                  <Text fontSize="$4" fontWeight="600" color="$textPrimary">
+                    Length
+                  </Text>
+                  <Text fontSize="$4" color="$textSecondary">
+                    {targetBars} Bars
+                  </Text>
+                </XStack>
+                <XStack gap="$3">
+                  {[4, 8].map((bars) => (
                     <Button
                       key={bars}
                       flex={1}
-                      onPress={() => handleBarsChange(bars)}
-                      bg={isActive ? "$accent" : "$surface"}
-                      borderColor={isActive ? "$accent" : "$border"}
-                      borderWidth={1}
+                      bg={targetBars === bars ? "$accent" : "$border"}
+                      onPress={() => {
+                        if (!fixedBars) setTargetBars(bars);
+                      }}
+                      pressStyle={{ opacity: 0.8 }}
+                      disabled={fixedBars ? true : false}
+                      opacity={fixedBars ? 0.4 : 1}
                     >
                       <Text
-                        color={isActive ? "white" : "$textSecondary"}
-                        fontWeight={isActive ? "bold" : "normal"}
+                        color={targetBars === bars ? "white" : "$textSecondary"}
+                        fontWeight="bold"
                       >
                         {bars} Bars
                       </Text>
                     </Button>
-                  );
-                })}
-              </XStack>
+                  ))}
+                </XStack>
+              </YStack>
+
+              <Button
+                bg={isPreviewing ? "$red9" : "$accent"}
+                icon={
+                  isPreviewing ? (
+                    <Square size={18} color="white" />
+                  ) : (
+                    <Play size={18} color="white" />
+                  )
+                }
+                onPress={togglePreview}
+                br="$10"
+                px="$4"
+                mt="$2"
+                size="$4"
+              >
+                <Text color="white" fontWeight="600" fontSize="$4">
+                  {isPreviewing ? "Stop Preview" : "Preview Beat"}
+                </Text>
+              </Button>
             </YStack>
+          </ScrollView>
 
-            <Button
-              bg={isPreviewing ? "$red9" : "$accent"}
-              icon={
-                isPreviewing ? (
-                  <Square size={18} color="white" />
-                ) : (
-                  <Play size={18} color="white" />
-                )
-              }
-              onPress={togglePreview}
-              br="$10"
-              px="$4"
-              mt="$2"
-            >
-              <Text color="white" fontWeight="600">
-                {isPreviewing ? "Stop Preview" : "Preview Beat"}
-              </Text>
-            </Button>
-          </YStack>
-
-          <YStack gap="$3" pb="$6">
+          <YStack gap="$3" pt="$4" bg="$background">
             <Button
               size="$5"
               bg="$accent"

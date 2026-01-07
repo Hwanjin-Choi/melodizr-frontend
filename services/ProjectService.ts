@@ -9,6 +9,9 @@ export interface Project {
   tracks: TrackItem[];
   createdAt: number;
   updatedAt: number;
+  bpm?: number;
+  bars?: number;
+  durationMillis?: number;
 }
 
 export interface ProjectSummary {
@@ -26,12 +29,23 @@ export const ProjectService = {
       const newProjectId = Crypto.randomUUID();
       const now = Date.now();
 
+      let projectSettings = {};
+
+      if (firstTrack.playbackSettings) {
+        projectSettings = {
+          bpm: firstTrack.playbackSettings.targetBpm,
+          bars: firstTrack.playbackSettings.targetBars,
+          durationMillis: firstTrack.durationMillis,
+        };
+      }
+
       const newProject: Project = {
         id: newProjectId,
         title: `New Project ${new Date().toLocaleDateString()}`,
         tracks: [firstTrack],
         createdAt: now,
         updatedAt: now,
+        ...projectSettings,
       };
 
       await AsyncStorage.setItem(
