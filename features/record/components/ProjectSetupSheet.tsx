@@ -1,53 +1,10 @@
 import React, { useState, useEffect } from "react";
-import {
-  Sheet,
-  YStack,
-  XStack,
-  Text,
-  Button,
-  Slider,
-  Separator,
-  ScrollView,
-  View,
-  styled,
-} from "tamagui";
-import { Audio } from "expo-av";
-import {
-  Mic,
-  Music,
-  Play,
-  Square,
-  Check,
-  ChevronLeft,
-} from "@tamagui/lucide-icons";
+import { Sheet, YStack, XStack, Text, Button } from "tamagui";
+import { Mic, Music } from "@tamagui/lucide-icons";
+import { TrackItem } from "@/services/TrackLibraryService";
 
-import { useMetronome, calculatePresetParams } from "../hooks/useProjectSetup";
-import { PresetSample, TrackItem } from "@/services/TrackLibraryService";
-
-// [Data] Mock Data
-const PRESET_SAMPLES: PresetSample[] = [
-  {
-    id: "1",
-    title: "Basic Drum Kit",
-    uri: require("@/assets/preset/sample1.wav"),
-    originalBpm: 80,
-    originalBars: 2,
-  },
-  {
-    id: "2",
-    title: "Lo-Fi HipHop",
-    uri: require("@/assets/preset/sample2.wav"),
-    originalBpm: 90,
-    originalBars: 4,
-  },
-  {
-    id: "3",
-    title: "Acoustic Vibe",
-    uri: require("@/assets/preset/sample3.wav"),
-    originalBpm: 90,
-    originalBars: 4,
-  },
-];
+import { BeatboxSetup } from "./BeatboxSetup";
+import { PresetSetup } from "./PresetSetup";
 
 interface ProjectSetupSheetProps {
   open: boolean;
@@ -60,142 +17,25 @@ export const ProjectSetupSheet = ({
   onComplete,
   onOpenChange,
 }: ProjectSetupSheetProps) => {
-  const [step, setStep] = useState<
-    "select" | "beatbox" | "preset-config" | "preset-list"
-  >("select");
   const [position, setPosition] = useState(0);
-
-  const [selectedPreset, setSelectedPreset] = useState<PresetSample | null>(
-    null
-  );
-  const [targetBpm, setTargetBpm] = useState(100);
-  const [targetBars, setTargetBars] = useState(4);
-  const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
-  const [isPreviewing, setIsPreviewing] = useState(false);
-
-  const { isMetronomePlaying, toggleMetronome, isTicking } =
-    useMetronome(targetBpm);
+  const [mode, setMode] = useState<"select" | "beatbox" | "preset">("select");
 
   useEffect(() => {
-    if (!open) stopAllAudio();
-    return () => {
-      stopAllAudio();
-    };
+    if (!open) {
+      setMode("select");
+    }
   }, [open]);
 
-  const stopAllAudio = async () => {
-    if (previewSound) {
-      try {
-        await previewSound.stopAsync();
-        await previewSound.unloadAsync();
-      } catch (e) {}
-      setPreviewSound(null);
-      setIsPreviewing(false);
-    }
-    if (isMetronomePlaying) toggleMetronome();
+  const handleComplete = (track: TrackItem) => {
+    onComplete(track);
   };
-
-  const togglePreview = async () => {
-    if (isPreviewing) {
-      await previewSound?.stopAsync();
-      setIsPreviewing(false);
-      return;
-    }
-    if (!selectedPreset) return;
-
-    try {
-      if (previewSound) await previewSound.unloadAsync();
-      const { rate } = calculatePresetParams(
-        selectedPreset.originalBpm,
-        targetBpm,
-        targetBars
-      );
-      const { sound } = await Audio.Sound.createAsync(selectedPreset.uri, {
-        shouldPlay: true,
-        isLooping: true,
-      });
-      await sound.setRateAsync(rate, true);
-      setPreviewSound(sound);
-      setIsPreviewing(true);
-    } catch (e) {
-      console.error("Preview failed", e);
-    }
-  };
-
-  const confirmPreset = () => {
-    if (!selectedPreset) return;
-    const { rate, totalDurationMillis, displayDuration } =
-      calculatePresetParams(selectedPreset.originalBpm, targetBpm, targetBars);
-    const newTrack: TrackItem = {
-      id: Date.now().toString(),
-      uri: selectedPreset.uri,
-      title: `${selectedPreset.title} (${targetBpm} BPM)`,
-      duration: displayDuration,
-      durationMillis: totalDurationMillis,
-      createdAt: Date.now(),
-      playbackSettings: {
-        type: "preset",
-        originalBpm: selectedPreset.originalBpm,
-        targetBpm: targetBpm,
-        targetBars: targetBars,
-        rate: rate,
-        loopCount: 0,
-      },
-    };
-    stopAllAudio();
-    onComplete(newTrack);
-  };
-
-  const handleClose = () => {
-    stopAllAudio();
-    if (step === "preset-list") {
-      setStep("preset-config");
-      return;
-    }
-    setStep("select");
-  };
-
-  const renderHeader = (title: string, showBack: boolean = true) => (
-    <XStack
-      ai="center"
-      jc="center"
-      height="$4"
-      mb="$4"
-      width="100%"
-      position="relative"
-    >
-      {showBack && (
-        <Button
-          size="$3"
-          chromeless
-          icon={<ChevronLeft size={28} color="$textSecondary" />}
-          onPress={handleClose}
-          position="absolute"
-          left={-10}
-          zIndex={10}
-          p="$2"
-        />
-      )}
-      <Text
-        fontSize="$4"
-        fontWeight="700"
-        color="$textPrimary"
-        textAlign="center"
-      >
-        {title}
-      </Text>
-    </XStack>
-  );
 
   return (
     <Sheet
       forceRemoveScrollEnabled={open}
       modal={true}
       open={open}
-      onOpenChange={(val) => {
-        if (!val) stopAllAudio();
-        onOpenChange?.(val);
-      }}
+      onOpenChange={onOpenChange}
       snapPoints={[85]}
       position={position}
       onPositionChange={setPosition}
@@ -215,8 +55,8 @@ export const ProjectSetupSheet = ({
       >
         <Sheet.Handle bg="$border" />
 
-        {/* STEP 1: Main Selection */}
-        {step === "select" && (
+        {/* --- 1. Selection Mode --- */}
+        {mode === "select" && (
           <YStack flex={1} gap="$6" ai="center" jc="center" pb="$10">
             <YStack ai="center" gap="$2">
               <Text fontSize="$6" fontWeight="800" color="$textPrimary">
@@ -228,6 +68,7 @@ export const ProjectSetupSheet = ({
             </YStack>
 
             <XStack gap="$4" width="100%" jc="center">
+              {/* Go to Beatbox */}
               <Button
                 flex={1}
                 h={220}
@@ -237,17 +78,13 @@ export const ProjectSetupSheet = ({
                 borderColor="$border"
                 borderWidth={1}
                 pressStyle={{ bg: "$border", scale: 0.98 }}
-                onPress={() => {
-                  setStep("beatbox");
-                  setTargetBpm(100);
-                }}
                 p="$3"
                 br="$6"
+                onPress={() => setMode("beatbox")}
               >
                 <YStack bg="$border" p="$4" br="$10" mb="$1">
                   <Mic size={36} color="white" />
                 </YStack>
-
                 <YStack ai="center" gap="$1">
                   <Text fontSize="$4" fontWeight="800" color="$accent">
                     Beatbox
@@ -258,7 +95,7 @@ export const ProjectSetupSheet = ({
                 </YStack>
               </Button>
 
-              {/* Preset Button */}
+              {/* Go to Preset */}
               <Button
                 flex={1}
                 h={220}
@@ -268,17 +105,13 @@ export const ProjectSetupSheet = ({
                 borderColor="$border"
                 borderWidth={1}
                 pressStyle={{ bg: "$border", scale: 0.98 }}
-                onPress={() => {
-                  if (selectedPreset) setStep("preset-config");
-                  else setStep("preset-list");
-                }}
                 p="$3"
                 br="$6"
+                onPress={() => setMode("preset")}
               >
                 <YStack bg="$border" p="$4" br="$10" mb="$1">
                   <Music size={36} color="white" />
                 </YStack>
-
                 <YStack ai="center" gap="$1">
                   <Text fontSize="$4" fontWeight="800" color="$accent">
                     Preset
@@ -292,377 +125,22 @@ export const ProjectSetupSheet = ({
           </YStack>
         )}
 
-        {/* STEP 2: Beatbox */}
-        {step === "beatbox" && (
-          <YStack flex={1} gap="$5">
-            {renderHeader("Record Beatbox")}
-
-            <YStack
-              bg="$surface"
-              p="$6"
-              br="$6"
-              gap="$5"
-              borderColor={isTicking ? "$accent" : "transparent"}
-              borderWidth={5}
-            >
-              <YStack gap="$3">
-                <EngagingMetronome
-                  bpm={targetBpm}
-                  active={isMetronomePlaying}
-                />
-                <XStack jc="space-between" ai="center">
-                  <Text fontSize="$4" color="$textSecondary" fontWeight="600">
-                    Tempo
-                  </Text>
-                  <Text
-                    fontSize="$6"
-                    color="$accent"
-                    fontWeight="800"
-                    fontVariant={["tabular-nums"]}
-                  >
-                    {targetBpm}{" "}
-                    <Text fontSize="$3" color="$grayText">
-                      BPM
-                    </Text>
-                  </Text>
-                </XStack>
-                <Slider
-                  value={[targetBpm]}
-                  min={60}
-                  max={180}
-                  step={1}
-                  onValueChange={(val) => setTargetBpm(val[0])}
-                >
-                  <Slider.Track bg="$border" height={8}>
-                    <Slider.TrackActive bg="$accent" />
-                  </Slider.Track>
-                  <Slider.Thumb
-                    index={0}
-                    circular
-                    size="$3"
-                    bg="$light1"
-                    elevation="$2"
-                  />
-                </Slider>
-              </YStack>
-              <Separator borderColor="$border" />
-
-              <Button
-                bg={isMetronomePlaying ? "$accent" : "$border"}
-                pressStyle={{ opacity: 0.9 }}
-                onPress={toggleMetronome}
-                icon={
-                  isMetronomePlaying ? (
-                    <Square size={20} color="white" />
-                  ) : (
-                    <Play size={20} color="white" />
-                  )
-                }
-                br="$10"
-                h="$5"
-                px="$5"
-              >
-                <Text color="white" fontWeight="700" fontSize="$4">
-                  {isMetronomePlaying ? "Stop Metronome" : "Start Metronome"}
-                </Text>
-              </Button>
-            </YStack>
-
-            <YStack
-              f={1}
-              ai="center"
-              jc="center"
-              bg="$background"
-              borderColor="$border"
-              borderWidth={2}
-              borderStyle="dashed"
-              br="$6"
-              gap="$3"
-            >
-              <YStack bg="$border" p="$4" br="$10">
-                <Mic size={40} color="#888" />
-              </YStack>
-              <Text color="$textSecondary" fontSize="$4">
-                Tap record button to start
-              </Text>
-            </YStack>
-            <Button
-              size="$5"
-              bg="$accent"
-              pressStyle={{ bg: "$accentPress" }}
-              disabled
-              icon={<Check color="white" />}
-            >
-              <Text color="white" fontWeight="bold">
-                Convert
-              </Text>
-            </Button>
-          </YStack>
+        {/* --- 2. Beatbox Setup Mode --- */}
+        {mode === "beatbox" && (
+          <BeatboxSetup
+            onBack={() => setMode("select")}
+            onComplete={handleComplete}
+          />
         )}
 
-        {/* STEP 3-A: Preset List Selection */}
-        {step === "preset-list" && (
-          <YStack flex={1} gap="$5">
-            {renderHeader("Select Preset")}
-
-            <Sheet.ScrollView showsVerticalScrollIndicator={false}>
-              <YStack gap="$3" pb="$8">
-                {PRESET_SAMPLES.map((item) => {
-                  const isSelected = selectedPreset?.id === item.id;
-                  return (
-                    <Button
-                      key={item.id}
-                      onPress={() => {
-                        setSelectedPreset(item);
-                        setStep("preset-config");
-                      }}
-                      bg={isSelected ? "$border" : "$surface"}
-                      borderColor={isSelected ? "$accent" : "$border"}
-                      borderWidth={1}
-                      jc="space-between"
-                      minHeight="$6"
-                      pressStyle={{ bg: "$border" }}
-                      px="$4"
-                      py="$3"
-                    >
-                      <XStack gap="$3" ai="center" flex={1}>
-                        <Music
-                          size={20}
-                          color={isSelected ? "$accent" : "$grayText"}
-                        />
-                        <YStack flex={1}>
-                          <Text
-                            color={isSelected ? "$textPrimary" : "$grayText"}
-                            fontWeight={isSelected ? "bold" : "normal"}
-                            fontSize="$4"
-                          >
-                            {item.title}
-                          </Text>
-                        </YStack>
-                      </XStack>
-                      <XStack gap="$3" ai="center">
-                        <Text fontSize="$3" color="$grayText">
-                          {item.originalBpm} BPM
-                        </Text>
-                        {isSelected && <Check size={18} color="$accent" />}
-                      </XStack>
-                    </Button>
-                  );
-                })}
-              </YStack>
-            </Sheet.ScrollView>
-          </YStack>
-        )}
-
-        {/* STEP 3-B: Preset Configuration */}
-        {step === "preset-config" && selectedPreset && (
-          <YStack flex={1} gap="$5">
-            {renderHeader("Configure Preset")}
-
-            <Button
-              onPress={() => setStep("preset-list")}
-              bg="$surface"
-              borderColor="$border"
-              borderWidth={1}
-              jc="space-between"
-              height="$5"
-              px="$4"
-              mb="$2"
-            >
-              <XStack gap="$3" ai="center">
-                <Music size={18} color="$accent" />
-                <Text color="$textPrimary" fontSize="$4" fontWeight="600">
-                  {selectedPreset.title}
-                </Text>
-              </XStack>
-              <Text color="$accent" fontSize="$4">
-                Change
-              </Text>
-            </Button>
-
-            <YStack flex={1} gap="$5" justifyContent="space-between">
-              <YStack gap="$5" p="$5" bg="$surface" br="$5">
-                {/* Sliders... */}
-                <YStack gap="$3">
-                  <XStack jc="space-between" ai="flex-end">
-                    <Text fontSize="$3" color="$textSecondary" fontWeight="600">
-                      Tempo
-                    </Text>
-                    <Text fontSize="$5" color="$accent" fontWeight="800">
-                      {targetBpm}{" "}
-                      <Text fontSize="$3" color="$grayText">
-                        BPM
-                      </Text>
-                    </Text>
-                  </XStack>
-                  <Slider
-                    value={[targetBpm]}
-                    min={60}
-                    max={180}
-                    step={1}
-                    onValueChange={(v) => {
-                      setTargetBpm(v[0]);
-                      if (isPreviewing) togglePreview();
-                    }}
-                  >
-                    <Slider.Track bg="$border" height={6}>
-                      <Slider.TrackActive bg="$accent" />
-                    </Slider.Track>
-                    <Slider.Thumb index={0} circular size="$2" bg="$light1" />
-                  </Slider>
-                </YStack>
-
-                <YStack gap="$3">
-                  <XStack jc="space-between" ai="flex-end">
-                    <Text fontSize="$3" color="$textSecondary" fontWeight="600">
-                      Duration
-                    </Text>
-                    <Text fontSize="$5" color="$accent" fontWeight="800">
-                      {targetBars}{" "}
-                      <Text fontSize="$3" color="$grayText">
-                        Bars
-                      </Text>
-                    </Text>
-                  </XStack>
-                  <Slider
-                    value={[targetBars]}
-                    min={2}
-                    max={32}
-                    step={2}
-                    onValueChange={(v) => {
-                      setTargetBars(v[0]);
-                      if (isPreviewing) togglePreview();
-                    }}
-                  >
-                    <Slider.Track bg="$border" height={6}>
-                      <Slider.TrackActive bg="$accent" />
-                    </Slider.Track>
-                    <Slider.Thumb index={0} circular size="$2" bg="$light1" />
-                  </Slider>
-                </YStack>
-
-                <Button
-                  bg={isPreviewing ? "$red9" : "$accent"}
-                  icon={
-                    isPreviewing ? (
-                      <Square size={18} color="white" />
-                    ) : (
-                      <Play size={18} color="white" />
-                    )
-                  }
-                  onPress={togglePreview}
-                  br="$10"
-                  pressStyle={{ opacity: 0.9 }}
-                  px="$4"
-                >
-                  <Text color="white" fontWeight="600">
-                    {isPreviewing ? "Stop Preview" : "Preview Beat"}
-                  </Text>
-                </Button>
-              </YStack>
-
-              <Button
-                size="$5"
-                bg="$accent"
-                pressStyle={{ bg: "$accentPress" }}
-                icon={<Check color="white" />}
-                onPress={confirmPreset}
-                px="$4"
-              >
-                <Text color="white" fontWeight="bold">
-                  Start with this Beat
-                </Text>
-              </Button>
-            </YStack>
-          </YStack>
+        {/* --- 3. Preset Setup Mode --- */}
+        {mode === "preset" && (
+          <PresetSetup
+            onBack={() => setMode("select")}
+            onComplete={handleComplete}
+          />
         )}
       </Sheet.Frame>
     </Sheet>
   );
-};
-
-const EngagingMetronome = ({
-  bpm,
-  active,
-}: {
-  bpm: number;
-  active: boolean;
-}) => {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    const intervalMs = (60 / bpm) * 1000;
-    const timer = setInterval(() => setTick((t) => (t + 1) % 4), intervalMs);
-    return () => clearInterval(timer);
-  }, [bpm, active]);
-  const isFirstBeat = tick === 0;
-  return (
-    <YStack
-      alignItems="center"
-      justifyContent="center"
-      height={120}
-      width="100%"
-      overflow="hidden"
-    >
-      <PulsingRing active={active} bpm={bpm} strong={isFirstBeat} />
-      <YStack alignItems="center" gap="$3" zIndex={1}>
-        <View
-          width={60}
-          height={60}
-          borderRadius={30}
-          backgroundColor="$accent"
-          alignItems="center"
-          justifyContent="center"
-          animation="bouncy"
-          scale={isFirstBeat ? 1.3 : 1.1}
-          opacity={isFirstBeat ? 1 : 0.8}
-        >
-          <Music size={24} color="white" />
-        </View>
-        <XStack gap="$2">
-          {[0, 1, 2, 3].map((i) => (
-            <View
-              key={i}
-              width={8}
-              height={8}
-              borderRadius={4}
-              backgroundColor={tick === i ? "$accent" : "$dark4"}
-              animation="quick"
-              scale={tick === i ? 1.4 : 1}
-              opacity={tick === i ? 1 : 0.4}
-            />
-          ))}
-        </XStack>
-      </YStack>
-    </YStack>
-  );
-};
-
-const PulsingRingView = styled(View, {
-  position: "absolute",
-  width: 80,
-  height: 80,
-  borderRadius: 40,
-  borderWidth: 3,
-  borderColor: "$accent",
-  opacity: 0,
-  variants: {
-    pulse: {
-      true: {
-        animation: { type: "timing", duration: 1000, loop: true },
-        scale: 2.5,
-        opacity: 0,
-        enterStyle: { scale: 0.8, opacity: 0.6 },
-      },
-    },
-    strong: { true: { borderColor: "$accent", borderWidth: 5 } },
-  } as const,
-});
-const PulsingRing = ({ active, bpm, strong }: any) => {
-  const [key, setKey] = useState(0);
-  useEffect(() => {
-    if (strong) setKey((k) => k + 1);
-  }, [strong]);
-  if (!active) return null;
-  return strong ? <PulsingRingView key={key} pulse strong={strong} /> : null;
 };
