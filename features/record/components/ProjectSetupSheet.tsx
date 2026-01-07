@@ -306,7 +306,10 @@ export const ProjectSetupSheet = ({
               borderWidth={5}
             >
               <YStack gap="$3">
-                <EngagingMetronome bpm={targetBpm} active={true} />
+                <EngagingMetronome
+                  bpm={targetBpm}
+                  active={isMetronomePlaying}
+                />
                 <XStack jc="space-between" ai="center">
                   <Text fontSize="$4" color="$textSecondary" fontWeight="600">
                     Tempo
