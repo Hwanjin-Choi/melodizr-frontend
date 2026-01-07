@@ -8,6 +8,8 @@ import {
   Slider,
   Separator,
   ScrollView,
+  View,
+  styled,
 } from "tamagui";
 import { Audio } from "expo-av";
 import {
@@ -304,6 +306,7 @@ export const ProjectSetupSheet = ({
               borderWidth={5}
             >
               <YStack gap="$3">
+                <EngagingMetronome bpm={targetBpm} active={true} />
                 <XStack jc="space-between" ai="center">
                   <Text fontSize="$4" color="$textSecondary" fontWeight="600">
                     Tempo
@@ -573,4 +576,90 @@ export const ProjectSetupSheet = ({
       </Sheet.Frame>
     </Sheet>
   );
+};
+
+const EngagingMetronome = ({
+  bpm,
+  active,
+}: {
+  bpm: number;
+  active: boolean;
+}) => {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const intervalMs = (60 / bpm) * 1000;
+    const timer = setInterval(() => setTick((t) => (t + 1) % 4), intervalMs);
+    return () => clearInterval(timer);
+  }, [bpm, active]);
+  const isFirstBeat = tick === 0;
+  return (
+    <YStack
+      alignItems="center"
+      justifyContent="center"
+      height={120}
+      width="100%"
+      overflow="hidden"
+    >
+      <PulsingRing active={active} bpm={bpm} strong={isFirstBeat} />
+      <YStack alignItems="center" gap="$3" zIndex={1}>
+        <View
+          width={60}
+          height={60}
+          borderRadius={30}
+          backgroundColor="$accent"
+          alignItems="center"
+          justifyContent="center"
+          animation="bouncy"
+          scale={isFirstBeat ? 1.3 : 1.1}
+          opacity={isFirstBeat ? 1 : 0.8}
+        >
+          <Music size={24} color="white" />
+        </View>
+        <XStack gap="$2">
+          {[0, 1, 2, 3].map((i) => (
+            <View
+              key={i}
+              width={8}
+              height={8}
+              borderRadius={4}
+              backgroundColor={tick === i ? "$accent" : "$dark4"}
+              animation="quick"
+              scale={tick === i ? 1.4 : 1}
+              opacity={tick === i ? 1 : 0.4}
+            />
+          ))}
+        </XStack>
+      </YStack>
+    </YStack>
+  );
+};
+
+const PulsingRingView = styled(View, {
+  position: "absolute",
+  width: 80,
+  height: 80,
+  borderRadius: 40,
+  borderWidth: 3,
+  borderColor: "$accent",
+  opacity: 0,
+  variants: {
+    pulse: {
+      true: {
+        animation: { type: "timing", duration: 1000, loop: true },
+        scale: 2.5,
+        opacity: 0,
+        enterStyle: { scale: 0.8, opacity: 0.6 },
+      },
+    },
+    strong: { true: { borderColor: "$accent", borderWidth: 5 } },
+  } as const,
+});
+const PulsingRing = ({ active, bpm, strong }: any) => {
+  const [key, setKey] = useState(0);
+  useEffect(() => {
+    if (strong) setKey((k) => k + 1);
+  }, [strong]);
+  if (!active) return null;
+  return strong ? <PulsingRingView key={key} pulse strong={strong} /> : null;
 };
