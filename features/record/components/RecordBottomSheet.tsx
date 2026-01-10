@@ -179,6 +179,8 @@ export const RecordBottomSheet = forwardRef<
       backgroundStyle={{ backgroundColor: theme.dark2?.val || "#1E1E1E" }}
       onClose={onCloseSheet}
       keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
     >
       <YStack flex={1} paddingBottom={insets.bottom + 20}>
         {CurrentView}

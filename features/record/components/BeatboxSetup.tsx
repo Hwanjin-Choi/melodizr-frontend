@@ -9,10 +9,10 @@ import {
   View,
   styled,
   ScrollView,
-  Separator,
   Spinner,
 } from "tamagui";
 import { Audio } from "expo-av";
+import { Asset } from "expo-asset";
 import {
   Mic,
   Play,
@@ -22,11 +22,13 @@ import {
   RefreshCcw,
   Circle,
   Music,
-  Headphones,
-  Volume2,
+  Wand2,
+  FileAudio,
+  Drum,
 } from "@tamagui/lucide-icons";
 
 import { TrackItem } from "@/services/TrackLibraryService";
+import { TriaApiService } from "@/services/TriaApiService";
 
 const TIMBRE_COLLECTION = [
   {
@@ -118,6 +120,14 @@ export const BeatboxSetup = ({
   const [playbackSound, setPlaybackSound] = useState<Audio.Sound | null>(null);
   const [isPlayingReview, setIsPlayingReview] = useState(false);
 
+  // AI Generation State
+  const [generatedUri, setGeneratedUri] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // [추가] 시각적 메트로놈 (Visual Metronome) 상태
+  const [metronomeTick, setMetronomeTick] = useState(0);
+  const [isBeatFlash, setIsBeatFlash] = useState(false);
+
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -133,6 +143,27 @@ export const BeatboxSetup = ({
     if (fixedBars) setTargetBars(fixedBars);
   }, [fixedBpm, fixedBars]);
 
+  useEffect(() => {
+    if (recordingState !== "recording") {
+      setIsBeatFlash(false);
+      return;
+    }
+
+    const intervalMs = (60 / targetBpm) * 1000;
+
+    setIsBeatFlash(true);
+    setMetronomeTick(0);
+    setTimeout(() => setIsBeatFlash(false), 150);
+
+    const timer = setInterval(() => {
+      setMetronomeTick((t) => (t + 1) % 4);
+      setIsBeatFlash(true);
+      setTimeout(() => setIsBeatFlash(false), 150);
+    }, intervalMs);
+
+    return () => clearInterval(timer);
+  }, [recordingState, targetBpm]);
+
   const cleanupAllAudio = async () => {
     if (playbackSound) await playbackSound.unloadAsync();
     if (timbreSound) await timbreSound.unloadAsync();
@@ -142,6 +173,10 @@ export const BeatboxSetup = ({
       } catch (e) {}
     }
     if (timerRef.current) clearTimeout(timerRef.current);
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+    });
   };
 
   // --- Timbre Preview Logic ---
@@ -248,7 +283,10 @@ export const BeatboxSetup = ({
       const uri = recordingRef.current.getURI();
       const status = await recordingRef.current.getStatusAsync();
       const duration = status.durationMillis;
-
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
       setRecordingUri(uri);
       setRecordingDuration(duration);
       setRecordingState("review");
@@ -256,18 +294,55 @@ export const BeatboxSetup = ({
     } catch (e) {}
   };
 
-  const toggleReviewPlay = async () => {
+  const handleAiConvert = async () => {
+    if (!recordingUri) return;
+    try {
+      setIsGenerating(true);
+
+      const timbreAsset = Asset.fromModule(selectedTimbre.uri);
+      await timbreAsset.downloadAsync();
+
+      if (!timbreAsset.localUri) {
+        throw new Error("Timbre asset loading failed");
+      }
+
+      const outputUri = await TriaApiService.generateAudio(
+        timbreAsset.localUri,
+        recordingUri
+      );
+
+      const { sound: tempSound, status } = await Audio.Sound.createAsync(
+        { uri: outputUri },
+        { shouldPlay: false }
+      );
+      if (status.isLoaded) {
+        setRecordingDuration(status.durationMillis || 0);
+      }
+      await tempSound.unloadAsync();
+
+      setGeneratedUri(outputUri);
+    } catch (error) {
+      console.error("AI Conversion Failed:", error);
+      alert("변환에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const toggleReviewPlay = async (uriOverride?: string) => {
+    const targetUri = uriOverride || generatedUri || recordingUri;
+
     if (isPlayingReview && playbackSound) {
       await playbackSound.stopAsync();
       setIsPlayingReview(false);
       return;
     }
-    if (!recordingUri) return;
+    if (!targetUri) return;
 
     try {
       if (playbackSound) await playbackSound.unloadAsync();
       const { sound } = await Audio.Sound.createAsync(
-        { uri: recordingUri },
+        { uri: targetUri },
         { shouldPlay: true }
       );
       sound.setOnPlaybackStatusUpdate((status) => {
@@ -278,20 +353,24 @@ export const BeatboxSetup = ({
     } catch (e) {}
   };
 
-  const confirmBeatbox = () => {
-    if (!recordingUri) return;
+  const confirmBeatbox = async () => {
+    const finalUri = generatedUri || recordingUri;
+    if (!finalUri) return;
+
+    await cleanupAllAudio();
 
     console.log("[Server Upload Info] Beatbox Created:", {
-      uri: recordingUri,
+      uri: finalUri,
       bpm: targetBpm,
       bars: targetBars,
-      inst: selectedTimbre.value,
+      duration: recordingDuration,
+      isAiGenerated: !!generatedUri,
     });
 
     onComplete({
       id: Date.now().toString(),
-      uri: recordingUri,
-      title: `${selectedTimbre.label} (My Beat)`,
+      uri: finalUri,
+      title: `${selectedTimbre.label} (${generatedUri ? "Beatbox" : "Raw"})`,
       duration: formatMs(recordingDuration),
       durationMillis: recordingDuration,
       createdAt: Date.now(),
@@ -310,12 +389,19 @@ export const BeatboxSetup = ({
     cleanupAllAudio();
     if (step === "session") {
       setRecordingState("idle");
+      setGeneratedUri(null);
       setStep("config");
     } else if (step === "timbre-select") {
       setStep("config");
     } else {
       onBack();
     }
+  };
+
+  const handleRetake = () => {
+    setRecordingUri(null);
+    setGeneratedUri(null);
+    setRecordingState("idle");
   };
 
   const renderHeader = (title: string) => (
@@ -338,14 +424,11 @@ export const BeatboxSetup = ({
 
   return (
     <YStack flex={1} gap="$5">
-      {/* 1. CONFIGURATION STEP */}
       {step === "config" && (
         <>
           {renderHeader("Setup Beatbox")}
-
           <ScrollView showsVerticalScrollIndicator={false}>
             <YStack gap="$6">
-              {/* BPM Slider */}
               <YStack gap="$3" bg="$surface" p="$4" br="$6">
                 <XStack jc="space-between" ai="center">
                   <Text fontSize="$4" fontWeight="600" color="$textPrimary">
@@ -371,7 +454,6 @@ export const BeatboxSetup = ({
                 </Slider>
               </YStack>
 
-              {/* Bars Selector */}
               <YStack gap="$3" bg="$surface" p="$4" br="$6">
                 <XStack jc="space-between" ai="center">
                   <Text fontSize="$4" fontWeight="600" color="$textPrimary">
@@ -402,6 +484,7 @@ export const BeatboxSetup = ({
                   ))}
                 </XStack>
               </YStack>
+
               <YStack gap="$3">
                 <Text
                   fontSize="$4"
@@ -546,6 +629,15 @@ export const BeatboxSetup = ({
               jc="center"
               gap="$5"
               overflow="hidden"
+              borderWidth={recordingState === "recording" ? 8 : 0}
+              borderColor={
+                recordingState === "recording" && isBeatFlash
+                  ? metronomeTick === 0
+                    ? "$red10"
+                    : "$accent"
+                  : "transparent"
+              }
+              animation="quick"
             >
               {recordingState === "counting" && (
                 <YStack ai="center" gap="$2" animation="quick">
@@ -597,13 +689,20 @@ export const BeatboxSetup = ({
                     {targetBpm} BPM / {targetBars} Bars{"\n"}
                     Target: {selectedTimbre.label}
                   </Text>
+                  {/* <Button onPress={loadSampleBeatbox} icon={<FileAudio/>}>Sample</Button> */}
                 </YStack>
               )}
               {recordingState === "review" && (
                 <YStack ai="center" gap="$4">
-                  <Check size={60} color="$accent" />
+                  {generatedUri ? (
+                    <Drum size={60} color="$accent" />
+                  ) : (
+                    <Check size={60} color="$accent" />
+                  )}
                   <Text fontSize="$5" fontWeight="bold" color="$textPrimary">
-                    Complete!
+                    {generatedUri
+                      ? "New Sound Converted!"
+                      : "Recording Complete"}
                   </Text>
                   <Button
                     icon={
@@ -613,10 +712,14 @@ export const BeatboxSetup = ({
                         <Play size={16} />
                       )
                     }
-                    onPress={toggleReviewPlay}
+                    onPress={() => toggleReviewPlay()}
                     chromeless
                   >
-                    {isPlayingReview ? "Stop Preview" : "Play Preview"}
+                    {isPlayingReview
+                      ? "Stop Preview"
+                      : generatedUri
+                      ? "Play New Sound"
+                      : "Play Original"}
                   </Button>
                 </YStack>
               )}
@@ -646,31 +749,50 @@ export const BeatboxSetup = ({
                   </Text>
                 </Button>
               ) : recordingState === "review" ? (
-                <XStack gap="$3">
+                <YStack gap="$3">
+                  {!generatedUri ? (
+                    <Button
+                      size="$5"
+                      bg="$accent"
+                      icon={
+                        isGenerating ? (
+                          <Spinner color="white" />
+                        ) : (
+                          <Drum size={16} color="white" />
+                        )
+                      }
+                      onPress={handleAiConvert}
+                      disabled={isGenerating}
+                    >
+                      <Text color="white" fontWeight="bold">
+                        {isGenerating ? "Converting..." : "Convert"}
+                      </Text>
+                    </Button>
+                  ) : (
+                    <Button
+                      size="$5"
+                      bg="$accent"
+                      icon={<Check color="white" />}
+                      onPress={confirmBeatbox}
+                      disabled={isGenerating}
+                    >
+                      <Text color="white" fontWeight="bold">
+                        Create Project
+                      </Text>
+                    </Button>
+                  )}
+
                   <Button
-                    flex={1}
                     bg="$surface"
                     borderColor="$border"
                     borderWidth={1}
                     icon={<RefreshCcw size={16} />}
-                    onPress={() => {
-                      setRecordingUri(null);
-                      setRecordingState("idle");
-                    }}
+                    onPress={handleRetake}
+                    disabled={isGenerating}
                   >
                     Retake
                   </Button>
-                  <Button
-                    flex={2}
-                    bg="$accent"
-                    icon={<Check color="white" />}
-                    onPress={confirmBeatbox}
-                  >
-                    <Text color="white" fontWeight="bold">
-                      Create Project
-                    </Text>
-                  </Button>
-                </XStack>
+                </YStack>
               ) : (
                 <Button size="$5" disabled bg="$border">
                   <Text color="$textSecondary">Preparing...</Text>

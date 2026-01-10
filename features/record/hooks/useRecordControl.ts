@@ -206,7 +206,10 @@ export const useRecordControl = (
 
       setRecording(null);
       setDurationMillis(0);
-
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
       if (uri) {
         setTempUri(uri);
         setTempDuration(finalDuration);
