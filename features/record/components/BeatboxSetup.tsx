@@ -205,6 +205,9 @@ export const BeatboxSetup = ({
 
   const startRecording = async () => {
     try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== "granted") return;
+
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
