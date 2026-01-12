@@ -68,40 +68,6 @@ export default function RecordProjectPage() {
     }
   };
 
-  /* 
-  useEffect(() => {
-    async function init() {
-      loadVoices();
-
-      if (id === "new") {
-        setProject({
-          id: "temp",
-          title: "새 프로젝트",
-          tracks: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
-        setIsNewProject(true);
-        return;
-      }
-
-      if (project && project.id === id) return;
-
-      if (id && typeof id === "string") {
-        const loaded = await ProjectService.getProject(id);
-        if (loaded) {
-          setProject(loaded);
-          setIsNewProject(false);
-        }
-      }
-
-      if (id === "new" || (project && project.tracks.length === 0)) {
-        setTimeout(() => setShowSetupSheet(true), 500);
-      }
-    }
-    init();
-  }, [id, project]); */
-
   useEffect(() => {
     async function init() {
       await loadVoices();
@@ -299,7 +265,6 @@ export default function RecordProjectPage() {
           />
         </YStack>
       ) : (
-        // 6. VoiceList 컴포넌트 렌더링
         <VoiceList
           voices={voiceLibrary}
           onDeleteVoice={handleDeleteVoice}
@@ -315,6 +280,8 @@ export default function RecordProjectPage() {
       <RecordBottomSheet
         ref={bottomSheetRef}
         onConversionComplete={handleConversionComplete}
+        bpm={project.bpm}
+        bars={project.bars}
       />
 
       <ProjectSetupSheet

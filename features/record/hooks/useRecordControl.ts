@@ -71,12 +71,12 @@ export const useRecordControl = (
   );
   const [originalFileName, setOriginalFileName] = useState<string>("");
 
-  // [변경] Instrument 대신 Mode 사용
   const [mode, setMode] = useState<string>(MODE_OPTIONS[0].value);
   const [textPrompt, setTextPrompt] = useState<string>("");
 
   const [isPlaying, setIsPlaying] = useState(false);
   const metronomeSoundRef = useRef<Audio.Sound | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const snapPoints = useMemo(() => ["60%"], []);
 
@@ -88,6 +88,8 @@ export const useRecordControl = (
     const loadSound = async () => {
       try {
         const { sound } = await Audio.Sound.createAsync(METRONOME_SOUND);
+        // [수정] 메트로놈 볼륨을 최대(1.0)로 설정
+        await sound.setVolumeAsync(1.0);
         metronomeSoundRef.current = sound;
       } catch (e) {
         console.error("Failed to load metronome sound", e);
@@ -96,6 +98,12 @@ export const useRecordControl = (
     loadSound();
     return () => {
       metronomeSoundRef.current?.unloadAsync();
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
 
@@ -149,32 +157,45 @@ export const useRecordControl = (
       });
 
       setStep("counting");
-      setCountdownValue(4);
+      const START_COUNT = 8;
+      setCountdownValue(START_COUNT);
       setSourceType("recording");
       setOriginalFileName("");
 
-      let count = 4;
+      if (timerRef.current) clearTimeout(timerRef.current);
+
       const beatDuration = (60 / bpm) * 1000;
+      let currentCount = START_COUNT;
 
       try {
         await metronomeSoundRef.current?.replayAsync();
       } catch {}
 
-      const interval = setInterval(async () => {
-        count--;
-        setCountdownValue(count);
+      let expected = Date.now() + beatDuration;
 
-        if (count > 0) {
+      const tick = () => {
+        const now = Date.now();
+        const drift = now - expected;
+
+        currentCount--;
+        setCountdownValue(currentCount);
+
+        if (currentCount > 0) {
           try {
-            await metronomeSoundRef.current?.replayAsync();
+            metronomeSoundRef.current?.replayAsync();
           } catch {}
-        }
 
-        if (count === 0) {
-          clearInterval(interval);
+          expected += beatDuration;
+          timerRef.current = setTimeout(
+            tick,
+            Math.max(0, beatDuration - drift)
+          );
+        } else {
           _startRecordingActual();
         }
-      }, beatDuration);
+      };
+
+      timerRef.current = setTimeout(tick, beatDuration);
     } catch (err) {
       console.error("Failed to init recording sequence", err);
       setStep("idle");
@@ -193,6 +214,8 @@ export const useRecordControl = (
   };
 
   const onStopRecording = useCallback(async () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+
     if (!recording) return;
 
     try {
@@ -328,7 +351,18 @@ export const useRecordControl = (
     textPrompt,
   ]);
 
-  const onCloseSheet = useCallback(() => {
+  const onCloseSheet = useCallback(async () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    if (recording) {
+      try {
+        await recording.stopAndUnloadAsync();
+      } catch (e) {
+        console.error("Failed to cleanup recording on close", e);
+      }
+      setRecording(null);
+    }
+
     setStep("idle");
     setIsPlaying(false);
     setDurationMillis(0);
@@ -336,7 +370,7 @@ export const useRecordControl = (
     setTempDuration(0);
     setTextPrompt("");
     ref.current?.close();
-  }, [ref]);
+  }, [ref, recording]);
 
   const startFromExistingVoice = useCallback(
     (voice: VoiceItem) => {
@@ -376,6 +410,8 @@ export const useRecordControl = (
     tempUri,
     countdownValue,
     maxDuration,
+    bpm,
+    bars,
     setStep,
     setIsPlaying,
     onStartRecording,

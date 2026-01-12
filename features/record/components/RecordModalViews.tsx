@@ -5,6 +5,7 @@ import {
   Upload,
   RefreshCcw,
   Check,
+  Music,
 } from "@tamagui/lucide-icons";
 import React, { useEffect, useState, useMemo } from "react";
 import Animated, {
@@ -25,6 +26,7 @@ import {
   YStack,
   Stack,
   useTheme,
+  styled,
 } from "tamagui";
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { RecordControl, MODE_OPTIONS } from "../hooks/useRecordControl";
@@ -88,19 +90,30 @@ export const IdleView = ({
 // ------------------------------------
 // Step 1: Counting View
 // ------------------------------------
-export const CountingView = ({ count }: { count: number }) => (
+export const CountingView = ({
+  count,
+  bpm = 120,
+}: {
+  count: number;
+  bpm?: number;
+}) => (
   <YStack flex={1} ai="center" jc="center" gap="$6">
-    <Text color="$accent" fontSize={80} fontWeight="900" animation="quick">
-      {count}
-    </Text>
-    <Text color="$grayText" fontSize="$5">
-      Get Ready...
-    </Text>
+    <EngagingMetronome bpm={bpm} active={true} />
+
+    <YStack ai="center" gap="$2">
+      <Text color="$accent" fontSize={60} fontWeight="900" animation="quick">
+        {count}
+      </Text>
+      <Text color="$grayText" fontSize="$5" textAlign="center">
+        Get Ready...{"\n"}
+        Recording will start soon
+      </Text>
+    </YStack>
   </YStack>
 );
 
 // ------------------------------------
-// Step 2: Recording View
+// Step 2: Recording View (Updated)
 // ------------------------------------
 const formatDuration = (millis: number) => {
   const totalSeconds = Math.floor(millis / 1000);
@@ -123,14 +136,19 @@ export const RecordingView = ({
   onStopRecording,
   durationMillis = 0,
   maxDuration = 0,
+  bpm = 120, // [추가] BPM 받기
 }: Pick<RecordControl, "onStopRecording"> & {
   durationMillis?: number;
   maxDuration?: number;
+  bpm?: number;
 }) => {
   const timeLeft = Math.max(0, maxDuration - durationMillis);
 
   return (
-    <YStack flex={1} ai="center" jc="center" px="$6" gap="$5">
+    <YStack flex={1} ai="center" jc="center" px="$6" gap="$4">
+      {/* [추가] 녹음 중 시각적 메트로놈 표시 */}
+      <EngagingMetronome bpm={bpm} active={true} />
+
       <Text color="$melodizrOrange" fontSize="$6" fontWeight="bold">
         {formatDuration(timeLeft)} left
       </Text>
@@ -143,7 +161,7 @@ export const RecordingView = ({
         borderColor="$textSecondary"
         ai="center"
         jc="center"
-        py="$8"
+        py="$4"
         position="relative"
         overflow="hidden"
       >
@@ -159,10 +177,10 @@ export const RecordingView = ({
         <RecordingWaveform />
       </YStack>
 
-      <YStack ai="center" gap="$4">
+      <YStack ai="center" gap="$2">
         <Circle
           onPress={onStopRecording}
-          size={84}
+          size={72}
           borderWidth={4}
           borderColor="$melodizrOrange"
           p={4}
@@ -176,11 +194,11 @@ export const RecordingView = ({
             jc="center"
             pointerEvents="none"
           >
-            <Stack width={24} height={24} bg="red" borderRadius={4} />
+            <Stack width={20} height={20} bg="red" borderRadius={4} />
           </Button>
         </Circle>
         <Text color="$grayText" fontSize="$3">
-          Recording... Tap to stop
+          Tap to stop
         </Text>
       </YStack>
     </YStack>
@@ -188,7 +206,7 @@ export const RecordingView = ({
 };
 
 // ------------------------------------
-// Step 3: Review View (Updated)
+// Step 3: Review View
 // ------------------------------------
 export const ReviewView = ({
   onConvert,
@@ -353,7 +371,7 @@ export const ReviewView = ({
             placeholderTextColor={theme.grayText?.val || "#666"}
             style={{
               backgroundColor: theme.dark2?.val || "#1E1E1E",
-              color: theme.color?.val || "white",
+              color: "#fff",
               borderRadius: 8,
               paddingHorizontal: 16,
               paddingVertical: 14,
@@ -431,5 +449,96 @@ const AnimatedBar = ({ delay }: { delay: number }) => {
         animatedStyle,
       ]}
     />
+  );
+};
+
+// ------------------------------------
+// Helper Components (Metronome)
+// ------------------------------------
+
+const PulsingRingView = styled(View, {
+  position: "absolute",
+  width: 80,
+  height: 80,
+  borderRadius: 40,
+  borderWidth: 3,
+  borderColor: "$accent",
+  opacity: 0,
+  variants: {
+    pulse: {
+      true: {
+        animation: { type: "timing", duration: 1000, loop: true },
+        scale: 2.5,
+        opacity: 0,
+        enterStyle: { scale: 0.8, opacity: 0.6 },
+      },
+    },
+    strong: { true: { borderColor: "$accent", borderWidth: 5 } },
+  } as const,
+});
+
+const PulsingRing = ({ active, bpm, strong }: any) => {
+  const [key, setKey] = useState(0);
+  useEffect(() => {
+    if (strong) setKey((k) => k + 1);
+  }, [strong]);
+  if (!active) return null;
+  return strong ? <PulsingRingView key={key} pulse strong={strong} /> : null;
+};
+
+const EngagingMetronome = ({
+  bpm,
+  active,
+}: {
+  bpm: number;
+  active: boolean;
+}) => {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const intervalMs = (60 / bpm) * 1000;
+    const timer = setInterval(() => setTick((t) => (t + 1) % 4), intervalMs);
+    return () => clearInterval(timer);
+  }, [bpm, active]);
+  const isFirstBeat = tick === 0;
+  return (
+    <YStack
+      alignItems="center"
+      justifyContent="center"
+      height={120}
+      width="100%"
+      overflow="hidden"
+    >
+      <PulsingRing active={active} bpm={bpm} strong={isFirstBeat} />
+      <YStack alignItems="center" gap="$3" zIndex={1}>
+        <View
+          width={60}
+          height={60}
+          borderRadius={30}
+          backgroundColor="$accent"
+          alignItems="center"
+          justifyContent="center"
+          animation="bouncy"
+          scale={isFirstBeat ? 1.3 : 1.1}
+          opacity={isFirstBeat ? 1 : 0.8}
+        >
+          <Music size={24} color="white" />
+        </View>
+        <XStack gap="$2">
+          {[0, 1, 2, 3].map((i) => (
+            <View
+              key={i}
+              width={8}
+              height={8}
+              borderRadius={4}
+              backgroundColor={tick === i ? "$accent" : "$dark4"}
+              animation="quick"
+              scale={tick === i ? 1.4 : 1}
+              opacity={tick === i ? 1 : 0.4}
+            />
+          ))}
+        </XStack>
+      </YStack>
+    </YStack>
   );
 };

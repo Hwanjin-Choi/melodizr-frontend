@@ -94,6 +94,7 @@ export const RecordBottomSheet = forwardRef<
     onRetake,
     countdownValue,
     maxDuration,
+    bpm, // [추가] useRecordControl에서 bpm 가져오기
   } = control;
 
   useImperativeHandle(ref, () => ({
@@ -119,13 +120,14 @@ export const RecordBottomSheet = forwardRef<
   const CurrentView = useMemo(() => {
     switch (step) {
       case "counting":
-        return <CountingView count={countdownValue} />;
+        return <CountingView count={countdownValue} bpm={bpm} />;
       case "recording":
         return (
           <RecordingView
             onStopRecording={onStopRecording}
             durationMillis={durationMillis}
             maxDuration={maxDuration}
+            bpm={bpm}
           />
         );
       case "review":
@@ -165,6 +167,7 @@ export const RecordBottomSheet = forwardRef<
     textPrompt,
     countdownValue,
     maxDuration,
+    bpm,
   ]);
 
   return (
