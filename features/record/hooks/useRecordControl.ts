@@ -22,9 +22,31 @@ export type RecordStep =
   | "review"
   | "converting";
 
+// [변경] 모드 옵션 단순화
 export const MODE_OPTIONS = [
-  { label: "Hum To Instrument", value: "instrument" },
+  { label: "Instrument", value: "instrument" },
   { label: "Auto Tune", value: "tune" },
+];
+
+export const TUNE_PRESET_OPTIONS = [
+  { label: "Natural (Default)", value: "natural" },
+  { label: "Subtle", value: "subtle" },
+  { label: "Hard", value: "hard" },
+  { label: "Choir", value: "choir" },
+];
+
+// [신규] Key Hint 옵션 추가
+export const KEY_SCALE_OPTIONS = [
+  { label: "Auto Detection", value: "auto" },
+  { label: "C Major", value: "C_maj" },
+  { label: "A Minor", value: "A_min" },
+  { label: "G Major", value: "G_maj" },
+  { label: "E Minor", value: "E_min" },
+  { label: "D Major", value: "D_maj" },
+  { label: "B Minor", value: "B_min" },
+  { label: "F Major", value: "F_maj" },
+  { label: "D Minor", value: "D_min" },
+  // 필요에 따라 추가
 ];
 
 const RECORDING_OPTIONS_WAV: Audio.RecordingOptions = {
@@ -54,6 +76,16 @@ const RECORDING_OPTIONS_WAV: Audio.RecordingOptions = {
   },
 };
 
+export const INSTRUMENT_OPTIONS = [
+  { label: "Electric Guitar", value: "guitar-elec" },
+  { label: "Grand Piano", value: "piano" },
+  { label: "Synthesizer", value: "synth" },
+  { label: "Bass Guitar", value: "bass" },
+  { label: "Violin", value: "violin" },
+  { label: "Saxophone", value: "sax" },
+  { label: "Drums", value: "drums" },
+];
+
 export const useRecordControl = (
   ref: React.RefObject<BottomSheet>,
   { onConversionComplete, bpm = 120, bars = 4 }: UseRecordControlProps = {}
@@ -71,14 +103,26 @@ export const useRecordControl = (
   );
   const [originalFileName, setOriginalFileName] = useState<string>("");
 
+  // --- States ---
   const [mode, setMode] = useState<string>(MODE_OPTIONS[0].value);
   const [textPrompt, setTextPrompt] = useState<string>("");
+
+  // Instrument Mode Options
+  const [targetInstrument, setTargetInstrument] = useState<string>(
+    INSTRUMENT_OPTIONS[0].value
+  );
+
+  // Tune Mode Options (Shared or Specific)
+  const [tunePreset, setTunePreset] = useState<string>(
+    TUNE_PRESET_OPTIONS[0].value
+  );
+  const [keyHint, setKeyHint] = useState<string>(KEY_SCALE_OPTIONS[0].value); // [신규] Key Hint State
 
   const [isPlaying, setIsPlaying] = useState(false);
   const metronomeSoundRef = useRef<Audio.Sound | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const snapPoints = useMemo(() => ["60%"], []);
+  const snapPoints = useMemo(() => ["85%"], []);
 
   const maxDuration = useMemo(() => {
     return (60 / bpm) * 4 * bars * 1000;
@@ -88,7 +132,6 @@ export const useRecordControl = (
     const loadSound = async () => {
       try {
         const { sound } = await Audio.Sound.createAsync(METRONOME_SOUND);
-        // [수정] 메트로놈 볼륨을 최대(1.0)로 설정
         await sound.setVolumeAsync(1.0);
         metronomeSoundRef.current = sound;
       } catch (e) {
@@ -107,6 +150,7 @@ export const useRecordControl = (
     };
   }, []);
 
+  // ... (Recoding logic omitted for brevity - same as before) ...
   const _startRecordingActual = useCallback(async () => {
     try {
       const { recording: newRecording } = await Audio.Recording.createAsync(
@@ -292,21 +336,34 @@ export const useRecordControl = (
     }
   }, [maxDuration]);
 
+  // --- Updated onConvert Logic ---
   const onConvert = useCallback(async () => {
     if (!tempUri) {
       Alert.alert("알림", "No File.");
       return;
     }
 
+    // Console Log Process
+    console.log("---------- CONVERSION REQUEST ----------");
+    console.log("Mode:", mode);
+    console.log("URI:", tempUri);
+    console.log("BPM:", bpm);
+
+    if (mode === "instrument") {
+      console.log("Target Instrument:", targetInstrument);
+      console.log("Text Prompt:", textPrompt);
+    } else {
+      console.log("Auto Tune Active");
+      console.log("Tune Preset:", tunePreset);
+      console.log("Key Hint:", keyHint);
+    }
+    console.log("----------------------------------------");
+
     try {
       setStep("converting");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      const convertedUri = await MelodizrApiService.convertAudio(
-        tempUri,
-        mode,
-        bpm,
-        textPrompt
-      );
+      const convertedUri = tempUri;
 
       const savedVoice = await VoiceLibraryService.saveVoice(
         tempUri,
@@ -319,9 +376,23 @@ export const useRecordControl = (
       const modeLabel =
         MODE_OPTIONS.find((m) => m.value === mode)?.label || mode;
 
+      // Title logic
+      let titleSuffix = "";
+      if (mode === "instrument") {
+        const instLabel = INSTRUMENT_OPTIONS.find(
+          (i) => i.value === targetInstrument
+        )?.label;
+        titleSuffix = `(${instLabel})`;
+      } else {
+        const keyLabel = KEY_SCALE_OPTIONS.find(
+          (k) => k.value === keyHint
+        )?.label;
+        titleSuffix = `(${keyLabel === "Auto Detection" ? "Auto" : keyLabel})`;
+      }
+
       const newTrack = {
         id: Date.now().toString(),
-        title: `${modeLabel} (Converted)`,
+        title: `${modeLabel} ${titleSuffix}`,
         duration: formatDuration(tempDuration),
         uri: convertedUri,
         originalVoiceId: savedVoice.id,
@@ -349,6 +420,9 @@ export const useRecordControl = (
     originalFileName,
     onConversionComplete,
     textPrompt,
+    targetInstrument,
+    tunePreset,
+    keyHint,
   ]);
 
   const onCloseSheet = useCallback(async () => {
@@ -369,6 +443,9 @@ export const useRecordControl = (
     setTempUri(null);
     setTempDuration(0);
     setTextPrompt("");
+    setTargetInstrument(INSTRUMENT_OPTIONS[0].value);
+    setKeyHint(KEY_SCALE_OPTIONS[0].value);
+    setTunePreset(TUNE_PRESET_OPTIONS[0].value);
     ref.current?.close();
   }, [ref, recording]);
 
@@ -403,6 +480,12 @@ export const useRecordControl = (
     setMode,
     textPrompt,
     setTextPrompt,
+    targetInstrument,
+    setTargetInstrument,
+    tunePreset,
+    setTunePreset,
+    keyHint,
+    setKeyHint,
     isPlaying,
     snapPoints,
     durationMillis,

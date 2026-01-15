@@ -39,7 +39,7 @@ const CustomHandle = () => {
     <View
       style={{
         backgroundColor: theme.dark2?.val || "#1E1E1E",
-        paddingVertical: 12,
+        paddingVertical: 16,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
         alignItems: "center",
@@ -94,7 +94,13 @@ export const RecordBottomSheet = forwardRef<
     onRetake,
     countdownValue,
     maxDuration,
-    bpm, // [추가] useRecordControl에서 bpm 가져오기
+    bpm,
+    targetInstrument,
+    setTargetInstrument,
+    tunePreset,
+    setTunePreset,
+    keyHint,
+    setKeyHint,
   } = control;
 
   useImperativeHandle(ref, () => ({
@@ -143,6 +149,12 @@ export const RecordBottomSheet = forwardRef<
             duration={tempDuration}
             uri={tempUri}
             onRetake={onRetake}
+            targetInstrument={targetInstrument}
+            setTargetInstrument={setTargetInstrument}
+            tunePreset={tunePreset}
+            setTunePreset={setTunePreset}
+            keyHint={keyHint}
+            setKeyHint={setKeyHint}
           />
         );
       case "converting":
@@ -168,6 +180,9 @@ export const RecordBottomSheet = forwardRef<
     countdownValue,
     maxDuration,
     bpm,
+    targetInstrument,
+    tunePreset,
+    keyHint,
   ]);
 
   return (
