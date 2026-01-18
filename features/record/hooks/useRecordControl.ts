@@ -22,7 +22,6 @@ export type RecordStep =
   | "review"
   | "converting";
 
-// [변경] 모드 옵션 단순화
 export const MODE_OPTIONS = [
   { label: "Instrument", value: "instrument" },
   { label: "Auto Tune", value: "tune" },
@@ -35,18 +34,16 @@ export const TUNE_PRESET_OPTIONS = [
   { label: "Choir", value: "choir" },
 ];
 
-// [신규] Key Hint 옵션 추가
 export const KEY_SCALE_OPTIONS = [
   { label: "Auto Detection", value: "auto" },
-  { label: "C Major", value: "C_maj" },
-  { label: "A Minor", value: "A_min" },
-  { label: "G Major", value: "G_maj" },
-  { label: "E Minor", value: "E_min" },
-  { label: "D Major", value: "D_maj" },
-  { label: "B Minor", value: "B_min" },
-  { label: "F Major", value: "F_maj" },
-  { label: "D Minor", value: "D_min" },
-  // 필요에 따라 추가
+  { label: "C Major", value: "C Major" },
+  { label: "A Minor", value: "A Minor" },
+  { label: "G Major", value: "G Major" },
+  { label: "E Minor", value: "E Minor" },
+  { label: "D Major", value: "D Major" },
+  { label: "B Minor", value: "B Minor" },
+  { label: "F Major", value: "F Major" },
+  { label: "D Minor", value: "D Minor" },
 ];
 
 const RECORDING_OPTIONS_WAV: Audio.RecordingOptions = {
@@ -77,13 +74,8 @@ const RECORDING_OPTIONS_WAV: Audio.RecordingOptions = {
 };
 
 export const INSTRUMENT_OPTIONS = [
-  { label: "Electric Guitar", value: "guitar-elec" },
-  { label: "Grand Piano", value: "piano" },
-  { label: "Synthesizer", value: "synth" },
-  { label: "Bass Guitar", value: "bass" },
-  { label: "Violin", value: "violin" },
-  { label: "Saxophone", value: "sax" },
-  { label: "Drums", value: "drums" },
+  { label: "Acoustic Guitar", value: "acoustic_guitar" },
+  { label: "Dry Piano", value: "dry_piano" },
 ];
 
 export const useRecordControl = (
