@@ -25,8 +25,10 @@ import {
   ZStack,
   Spacer,
   Input,
+  View,
 } from "tamagui";
 import { getSmartUri } from "@/utils/pathUtils";
+import { FileWaveformVisualizer } from "./FileWaveformVisualizer";
 
 interface PlaybackSettings {
   type: "preset";

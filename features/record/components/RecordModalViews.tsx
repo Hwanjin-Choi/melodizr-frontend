@@ -44,6 +44,7 @@ import {
   BottomSheetModal,
   BottomSheetBackdrop,
   BottomSheetView,
+  BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import {
   RecordControl,
@@ -53,8 +54,7 @@ import {
   KEY_SCALE_OPTIONS,
 } from "../hooks/useRecordControl";
 import { Audio } from "expo-av";
-
-// ... (SettingsRow, GenericSelector, IdleView, CountingView, RecordingView 등 이전 코드와 동일)
+import { FileWaveformVisualizer } from "./FileWaveformVisualizer";
 
 // ------------------------------------
 // Reusable Modern Components
@@ -95,6 +95,126 @@ const SettingsRow = ({
   );
 };
 
+const ModeGuidelineTable = () => {
+  return (
+    <YStack
+      borderWidth={1}
+      borderColor="$dark3"
+      borderRadius="$4"
+      overflow="hidden"
+      bg="$dark1"
+      mt="$4"
+    >
+      <XStack bg="$dark3" p="$3" ai="center" gap="$4">
+        <View minWidth={90}>
+          <Text color="$grayText" fontSize="$3" fontWeight="bold">
+            Feature
+          </Text>
+        </View>
+        <View flex={1}>
+          <Text color="$accent" fontSize="$3" fontWeight="bold">
+            Keywords
+          </Text>
+        </View>
+      </XStack>
+
+      {/* Row: Tone */}
+      <XStack
+        p="$3"
+        ai="center"
+        gap="$4"
+        borderBottomWidth={1}
+        borderBottomColor="$dark3"
+      >
+        <View minWidth={90}>
+          <Text color="$grayText" fontSize="$3" fontWeight="bold">
+            Tone
+          </Text>
+        </View>
+        <View flex={1}>
+          <Text color="white" fontSize="$3">
+            airy, bright, warm, dark, clean, distorted
+          </Text>
+        </View>
+      </XStack>
+
+      {/* Row: Space */}
+      <XStack
+        p="$3"
+        ai="center"
+        gap="$4"
+        borderBottomWidth={1}
+        borderBottomColor="$dark3"
+      >
+        <View minWidth={90}>
+          <Text color="$grayText" fontSize="$3" fontWeight="bold">
+            Space
+          </Text>
+        </View>
+        <View flex={1}>
+          <Text color="white" fontSize="$3">
+            wet, dry, hall, cathedral, room
+          </Text>
+        </View>
+      </XStack>
+
+      {/* Row: Dynamics */}
+      <XStack
+        p="$3"
+        ai="center"
+        gap="$4"
+        borderBottomWidth={1}
+        borderBottomColor="$dark3"
+      >
+        <View minWidth={90}>
+          <Text color="$grayText" fontSize="$3" fontWeight="bold">
+            Dynamics
+          </Text>
+        </View>
+        <View flex={1}>
+          <Text color="white" fontSize="$3">
+            punchy, aggressive, soft, compressed
+          </Text>
+        </View>
+      </XStack>
+
+      {/* Row: Modulation */}
+      <XStack
+        p="$3"
+        ai="center"
+        gap="$4"
+        borderBottomWidth={1}
+        borderBottomColor="$dark3"
+      >
+        <View minWidth={90}>
+          <Text color="$grayText" fontSize="$3" fontWeight="bold">
+            Modulation
+          </Text>
+        </View>
+        <View flex={1}>
+          <Text color="white" fontSize="$3">
+            chorus, phaser, delay, reverb
+          </Text>
+        </View>
+      </XStack>
+
+      {/* Row: Genre */}
+      <XStack p="$3" ai="center" gap="$4">
+        <View minWidth={90}>
+          <Text color="$grayText" fontSize="$3" fontWeight="bold">
+            Genre
+          </Text>
+        </View>
+        <View flex={1}>
+          <Text color="white" fontSize="$3">
+            rock, blues, jazz, pop, classical
+          </Text>
+        </View>
+      </XStack>
+    </YStack>
+  );
+};
+
 const GenericSelector = ({
   title,
   options,
@@ -110,6 +230,9 @@ const GenericSelector = ({
 }) => {
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const theme = useTheme();
+
+  // 전하의 말씀대로 화면의 50% 또는 75%만 차지하도록 설정하였나이다.
+  const snapPoints = useMemo(() => ["50%", "75%"], []);
 
   const handlePresent = useCallback(() => {
     bottomSheetModalRef.current?.present();
@@ -138,15 +261,16 @@ const GenericSelector = ({
       {trigger(handlePresent)}
       <BottomSheetModal
         ref={bottomSheetModalRef}
+        snapPoints={snapPoints}
+        enableDynamicSizing={false} // snapPoints를 사용하므로 false로 고정하옵니다.
         index={0}
-        enableDynamicSizing={true}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: theme.dark2?.val || "#1E1E1E" }}
         handleIndicatorStyle={{
           backgroundColor: theme.grayText?.val || "#888",
         }}
       >
-        <BottomSheetView style={{ padding: 16, paddingBottom: 40 }}>
+        <YStack flex={1} p="$4">
           <Text
             color="white"
             fontSize="$5"
@@ -156,37 +280,41 @@ const GenericSelector = ({
           >
             {title}
           </Text>
-          <YStack gap="$2">
-            {options.map((item) => {
-              const isSelected = item.value === value;
-              return (
-                <Button
-                  key={item.value}
-                  onPress={() => handleSelect(item.value)}
-                  bg={isSelected ? "$dark3" : "transparent"}
-                  borderColor={isSelected ? "$accent" : "$dark3"}
-                  borderWidth={1}
-                  jc="space-between"
-                  height="$5"
-                >
-                  <Text
-                    color={isSelected ? "white" : "$grayText"}
-                    fontWeight={isSelected ? "bold" : "normal"}
+          <BottomSheetScrollView
+            flex={1}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 40 }}
+          >
+            <YStack gap="$2">
+              {options.map((item) => {
+                const isSelected = item.value === value;
+                return (
+                  <Button
+                    key={item.value}
+                    onPress={() => handleSelect(item.value)}
+                    bg={isSelected ? "$dark3" : "transparent"}
+                    borderColor={isSelected ? "$accent" : "$dark3"}
+                    borderWidth={1}
+                    jc="space-between"
+                    height="$5"
                   >
-                    {item.label}
-                  </Text>
-                  {isSelected && <Check size={18} color="$accent" />}
-                </Button>
-              );
-            })}
-          </YStack>
-        </BottomSheetView>
+                    <Text
+                      color={isSelected ? "white" : "$grayText"}
+                      fontWeight={isSelected ? "bold" : "normal"}
+                    >
+                      {item.label}
+                    </Text>
+                    {isSelected && <Check size={18} color="$accent" />}
+                  </Button>
+                );
+              })}
+            </YStack>
+          </BottomSheetScrollView>
+        </YStack>
       </BottomSheetModal>
     </>
   );
 };
-
-// ... (IdleView, CountingView, RecordingView, RecordingWaveform 등은 변경 없음)
 export const IdleView = ({
   onOpenSheet,
   onStartRecording,
@@ -372,9 +500,10 @@ export const ReviewView = ({
   | "setKeyHint"
 > & { duration?: number; uri?: string | null }) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const guidelineSheetRef = useRef<BottomSheetModal>(null); // [추가] 가이드라인 시트 Ref
+  const guidelineSheetRef = useRef<BottomSheetModal>(null);
+  const [playbackProgress, setPlaybackProgress] = useState(0);
   const theme = useTheme();
-
+  const visualizerRef = useRef<any>(null);
   useEffect(() => {
     return () => {
       if (sound) sound.unloadAsync();
@@ -404,11 +533,26 @@ export const ReviewView = ({
       } else {
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri },
-          { shouldPlay: true }
+          {
+            shouldPlay: true,
+            progressUpdateIntervalMillis: 50,
+          }
         );
+
         newSound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) setIsPlaying(false);
+          if (status.isLoaded) {
+            if (status.durationMillis && status.durationMillis > 0) {
+              const progress = status.positionMillis / status.durationMillis;
+              setPlaybackProgress(progress);
+            }
+
+            if (status.didJustFinish) {
+              setIsPlaying(false);
+              setPlaybackProgress(0);
+            }
+          }
         });
+
         setSound(newSound);
         setIsPlaying(true);
       }
@@ -417,12 +561,10 @@ export const ReviewView = ({
     }
   };
 
-  // [추가] 가이드라인 시트 열기
   const handleOpenGuideline = useCallback(() => {
     guidelineSheetRef.current?.present();
   }, []);
 
-  // [추가] 가이드라인 시트 백드롭
   const renderGuidelineBackdrop = useCallback(
     (props: any) => (
       <BottomSheetBackdrop
@@ -453,6 +595,7 @@ export const ReviewView = ({
             gap="$3"
             borderWidth={1}
             borderColor="$dark3"
+            minHeight={80}
           >
             <Button
               size="$3"
@@ -461,30 +604,24 @@ export const ReviewView = ({
               onPress={handleTogglePlay}
               bg="$accent"
             />
+
             <YStack flex={1} gap="$1">
-              <Text color="white" fontSize="$4" fontWeight="bold">
-                Original Audio
-              </Text>
-              <Text color="$grayText" fontSize="$2">
+              <Text color="$grayText" fontSize="$3">
                 {formatDuration(duration)}
               </Text>
             </YStack>
-            <XStack gap="$1" ai="center" height={24} opacity={0.5}>
-              {Array.from({ length: 8 }).map((_, i) => (
-                <View
-                  key={i}
-                  width={3}
-                  height={Math.random() * 14 + 6}
-                  bg="white"
-                  borderRadius={2}
-                />
-              ))}
-            </XStack>
+
+            <View flex={2} height={45} jc="center" opacity={0.8}>
+              <FileWaveformVisualizer
+                uri={uri}
+                ref={visualizerRef}
+                isPlaying={isPlaying}
+              />
+            </View>
           </XStack>
 
           {/* 2. Mode Segmented Control with Guideline Button */}
           <YStack gap="$3">
-            {/* [수정] 라벨과 가이드라인 버튼을 양옆으로 배치 */}
             <XStack jc="space-between" ai="center">
               <Text
                 color="$grayText"
@@ -595,6 +732,22 @@ export const ReviewView = ({
                       />
                     )}
                   />
+                  <GenericSelector
+                    title="Select Key"
+                    options={KEY_SCALE_OPTIONS}
+                    value={keyHint}
+                    onChange={setKeyHint}
+                    trigger={(open) => (
+                      <SettingsRow
+                        label="Key Hint"
+                        value={
+                          KEY_SCALE_OPTIONS.find((k) => k.value === keyHint)
+                            ?.label
+                        }
+                        onPress={open}
+                      />
+                    )}
+                  />
 
                   <YStack
                     p="$4"
@@ -608,7 +761,7 @@ export const ReviewView = ({
                       value={textPrompt}
                       onChangeText={setTextPrompt}
                       maxLength={100}
-                      placeholder="Ex: Funky rhythm, Jazzy feel..."
+                      placeholder="Ex: Warm, Wet, Rock..."
                       placeholderTextColor="#666"
                       style={{
                         color: "#fff",
@@ -621,7 +774,6 @@ export const ReviewView = ({
                 </>
               )}
 
-              {/* TUNE MODE SETTINGS */}
               {mode === "tune" && (
                 <>
                   <GenericSelector
@@ -631,7 +783,7 @@ export const ReviewView = ({
                     onChange={setKeyHint}
                     trigger={(open) => (
                       <SettingsRow
-                        label="Key Scale"
+                        label="Key Hint"
                         value={
                           KEY_SCALE_OPTIONS.find((k) => k.value === keyHint)
                             ?.label
@@ -724,38 +876,54 @@ export const ReviewView = ({
         <BottomSheetView style={{ padding: 24, paddingBottom: 40 }}>
           <Text
             color="white"
-            fontSize="$5"
+            fontSize="$6"
             fontWeight="bold"
-            textAlign="center"
-            mb="$4"
+            textAlign="left"
+            mb="$2"
           >
-            What is Conversion Mode?
+            Conversion guides
           </Text>
-          <ScrollView style={{ maxHeight: 300 }}>
-            <YStack gap="$3">
-              <Text color="$grayText" fontSize="$4" lineHeight={24}>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-                eiusmod tempor incididunt ut labore et dolore magna aliqua.
-              </Text>
-              <Text color="$grayText" fontSize="$4" lineHeight={24}>
-                Ut enim ad minim veniam, quis nostrud exercitation ullamco
-                laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure
-                dolor in reprehenderit in voluptate velit esse cillum dolore eu
-                fugiat nulla pariatur.
-              </Text>
-              <Text color="$grayText" fontSize="$4" lineHeight={24}>
-                Excepteur sint occaecat cupidatat non proident, sunt in culpa
-                qui officia deserunt mollit anim id est laborum.
-              </Text>
-            </YStack>
-          </ScrollView>
+
+          {/* 위에서 만든 테이블 컴포넌트 배치 */}
+          <ModeGuidelineTable />
+
+          <YStack mt="$5" gap="$3">
+            <XStack gap="$3">
+              <Circle size={8} bg="$accent" mt="$2" />
+              <YStack flex={1}>
+                <Text color="white" fontWeight="bold" fontSize="$4">
+                  Instrument Mode
+                </Text>
+                <Text color="$grayText" fontSize="$3">
+                  Best for turning your humming ideas into professional
+                  instrument tracks like Piano or Guitar.
+                </Text>
+              </YStack>
+            </XStack>
+
+            <XStack gap="$3">
+              <Circle size={8} bg="$melodizrOrange" mt="$2" />
+              <YStack flex={1}>
+                <Text color="white" fontWeight="bold" fontSize="$4">
+                  Tune Mode
+                </Text>
+                <Text color="$grayText" fontSize="$3">
+                  Perfect for correcting off-pitch vocals while keeping your
+                  original voice timber.
+                </Text>
+              </YStack>
+            </XStack>
+          </YStack>
+
           <Button
-            mt="$4"
+            mt="$6"
+            size="$5"
             bg="$accent"
+            pressStyle={{ opacity: 0.8 }}
             onPress={() => guidelineSheetRef.current?.dismiss()}
           >
             <Text color="white" fontWeight="bold">
-              Got it
+              I Understand
             </Text>
           </Button>
         </BottomSheetView>
@@ -764,7 +932,6 @@ export const ReviewView = ({
   );
 };
 
-// ... (ConvertingView, AnimatedBar, EngagingMetronome 등 이전 코드와 동일)
 export const ConvertingView = () => (
   <YStack flex={1} ai="center" jc="center" gap="$6">
     <Spinner size="large" color="$accent" />

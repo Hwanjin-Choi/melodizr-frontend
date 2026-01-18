@@ -7,11 +7,14 @@ export const MelodizrApiService = {
     audioUri: string,
     mode: string,
     bpm: number,
-    textPrompt: string
+    textPrompt: string,
+    instrument: string,
+    keyHint: string,
+    tunePreset: string
   ): Promise<string> => {
     try {
       console.log(
-        `[API] 요청 시작: Mode=${mode}, BPM=${bpm}, Prompt=${textPrompt}`
+        `[API] 요청 시작: Mode=${mode}, BPM=${bpm}, Prompt=${textPrompt} instrument=${instrument} keyHint=${keyHint} tunePreset=${tunePreset}  `
       );
 
       const formData = new FormData();
@@ -23,11 +26,14 @@ export const MelodizrApiService = {
         name: filename,
         type: "audio/wav",
       });
-      formData.append("user_id", "af16e260-c6a1-4133-9d7f-5f3a015da82c");
+      formData.append("user_id", "5ac8d5d0-47ff-46cf-8be8-ad639b44be63");
       formData.append("mode", mode);
       formData.append("bpm", bpm.toString());
       formData.append("text_prompt", textPrompt || "");
       formData.append("wav_only", "true");
+      formData.append("instrument", instrument);
+      formData.append("key_hint", keyHint);
+      formData.append("tune_preset", tunePreset);
 
       const response = await fetch(API_URL, {
         method: "POST",

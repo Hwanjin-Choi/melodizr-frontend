@@ -13,6 +13,7 @@
     "@expo/vector-icons": "~14.0.4",
     "@gorhom/bottom-sheet": "^5.0.0",
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@simform_solutions/react-native-audio-waveform": "^2.1.6",
     "@tamagui/config": "^1.121.0",
     "@tamagui/core": "^1.121.0",
     "@tamagui/font-inter": "^1.121.0",

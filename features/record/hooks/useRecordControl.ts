@@ -35,7 +35,7 @@ export const TUNE_PRESET_OPTIONS = [
 ];
 
 export const KEY_SCALE_OPTIONS = [
-  { label: "Auto Detection", value: "auto" },
+  { label: "Auto Detection", value: "" },
   { label: "C Major", value: "C Major" },
   { label: "A Minor", value: "A Minor" },
   { label: "G Major", value: "G Major" },
@@ -75,7 +75,19 @@ const RECORDING_OPTIONS_WAV: Audio.RecordingOptions = {
 
 export const INSTRUMENT_OPTIONS = [
   { label: "Acoustic Guitar", value: "acoustic_guitar" },
+  { label: "Electric Guitar", value: "electric_guitar" },
+  { label: "Electric Bass", value: "electric_bass" },
+  { label: "Acoustic Bass", value: "acoustic_bass" },
+  { label: "Synthesizer Bass", value: "synth_bass" },
   { label: "Dry Piano", value: "dry_piano" },
+  { label: "Wet Piano", value: "wet_piano" },
+  { label: "Electric Piano", value: "electric_piano" },
+  { label: "Organ", value: "organ" },
+  { label: "String", value: "string" },
+  { label: "Violin", value: "violin" },
+  { label: "Saxophone", value: "saxophone" },
+  { label: "Trumpet", value: "trumpet" },
+  { label: "Flute", value: "flute" },
 ];
 
 export const useRecordControl = (
@@ -355,7 +367,15 @@ export const useRecordControl = (
       setStep("converting");
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      const convertedUri = tempUri;
+      const convertedUri = await MelodizrApiService.convertAudio(
+        tempUri,
+        mode,
+        bpm,
+        textPrompt,
+        targetInstrument,
+        keyHint,
+        tunePreset
+      );
 
       const savedVoice = await VoiceLibraryService.saveVoice(
         tempUri,
